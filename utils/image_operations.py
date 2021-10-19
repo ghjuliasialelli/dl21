@@ -1,41 +1,54 @@
 import os
 import numpy as np
 import torch
+from torch.distributions import transforms
 from torch.utils.data import IterableDataset, Dataset
-
+from PIL import Image
 
 # TODO: Decide if we're using PyTorch & Lightning or Tensorflow & Keras
 class DigitData(Dataset):
 
-    def __init__(self, path: str, cj_variances: dict([str, int])):
+    def __init__(self, path: str, cj_variance: (str, int), mode: str):
         """"
         @:param:    path
-        @:param:    cj_variances contains the color-jitter-variance values and corresponding expected bias (strong,
-        middle, weak). For explanation, see https://github.com/feidfoe/learning-not-to-learn.
+        @:param:    cj_variance contains the color-jitter-variance and corresponding string.
+                    For more, see https://github.com/feidfoe/learning-not-to-learn.
+        @:param:    mode is set to "train","test" or "test_gray".
         """
         super.__init__()
         # Load the colored mnist dataset into memory
         self.path = path
-        self.cj_variances = cj_variances
-        self.db = dict([])
+        self.cj_variance = cj_variance[1]
+        self.bias = cj_variance[0]
+        self.mode = mode
 
-        for name in cj_variances.keys():
-            self.db.update(
-                [name, np.load(os.path.join(path, f'mnist_10color_jitter_var_{cj_variances[name]}.npy'),
-                               encoding='latin1', allow_pickle=True).item()]
-            )
+        # keys from np.load(..) are:
+        # ['test_image', 'test_label', 'test_gray', 'train_label', 'train_image']
+        self.images = np.load(os.path.join(path, f'mnist_10color_jitter_var_{cj_variance}.npy'),
+                              encoding='latin1', allow_pickle=True).item()[self.mode]
+        self.labels = None
+        if mode != 'test_gray':
+            self.labels = np.load(os.path.join(path, f'mnist_10color_jitter_var_{cj_variance}.npy'),
+                              encoding='latin1', allow_pickle=True).item()[self.mode + '_label']
+        self.ToPIL = transforms.Compose([
+            transforms.ToPILImage(),
+        ])
 
-    def _set_bias_(self, bias: str) -> None:
-        self.cjv = self.cj_variances[bias]
-        self.bias = bias
+    def __getitem__(self, index):
+        x = self.images[index]
+        y = self.labels[index]
 
-    def __getitem__(self, item):
-        return self.db[self.bias][item]
+        x = self.ToPIL(x)
+
+        return x, y
 
     def __len__(self):
-        return len(self.db[self.bias])
+        # use shape?
+        return len(self.images)
 
     def __str__(self):
-        info = f' DigitDatabase with {len(self.cj_variances)} subsets.\n' \
-               f' Subsets filtered by color-jitter variances (i.e. expected bias).'
+        info = f' DigitDatabase with bias {self.bias} subsets.\n' \
+               f' Color-jitter variances {self.cj_variance}.\n' \
+               f' Number of Images: {len(self.images)}\n' \
+               f' Labels present: {self.labels is not None}'
         return info
