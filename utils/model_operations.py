@@ -26,6 +26,8 @@ class ModelDataset(Dataset):
 
         Descr.:     This dataset can be used to feed the pretrained models. Either feed this using a torch dataloader
                     to a torch model, or use ModelDataset[i] to fetch the i-th model from the directory.
+                    ##For future: may want to store to disk once we have loaded a pretrained model. However, at the
+                    moment that is not necessary.##
         """
         self.model_directory = os.path.join(data_directory, str(bias[1]))
         self.num_models = len(os.listdir(self.model_directory))
@@ -65,5 +67,5 @@ class ModelDataset(Dataset):
 
 
 # When testing:
-data = ModelDataset(bias=('strong', '0.02'), data_directory='/home/phil/Documents/Studium/DL/Project/train/')
-print(data[2].get_weights())
+# data = ModelDataset(bias=('strong', '0.02'), data_directory='/home/phil/Documents/Studium/DL/Project/train/')
+# print(data[2].get_weights())
