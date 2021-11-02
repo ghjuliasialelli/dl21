@@ -10,7 +10,7 @@ from tensorflow.data import Dataset as TfDataset
 # TODO: Decide if we're using PyTorch & Lightning or Tensorflow & Keras
 class DigitData_Torch(TorchDataset):
 
-    def __init__(self, path: str, cj_variance: (str, str), mode: str):
+    def __init__(self, path: str, cj_variance: str, mode: str):
         """"
         @:param:    path
         @:param:    cj_variance contains the color-jitter-variance and corresponding string.
@@ -20,8 +20,7 @@ class DigitData_Torch(TorchDataset):
         super().__init__()
         # Load the colored mnist dataset into memory
         self.path = path
-        self.cj_variance = cj_variance[1]
-        self.bias = cj_variance[0]
+        self.cj_variance = cj_variance
         self.mode = mode
 
         # keys from np.load(..) are:
@@ -53,7 +52,7 @@ class DigitData_Torch(TorchDataset):
         return len(self.images)
 
     def __str__(self):
-        info = f' DigitDatabase with bias {self.bias} subsets.\n' \
+        info = f' DigitDatabase...\n' \
                f' Color-jitter variances {self.cj_variance}.\n' \
                f' Number of Images: {len(self.images)}\n' \
                f' Labels present: {self.labels is not None}'
