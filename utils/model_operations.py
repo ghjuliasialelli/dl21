@@ -17,7 +17,7 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D
 
 class ModelDataset(Dataset):
 
-    def __init__(self, bias: (str, str), data_directory: str,):
+    def __init__(self, bias: str, data_directory: str,):
         """"
         @:param:    bias
         @:param:    model_directory
@@ -29,7 +29,7 @@ class ModelDataset(Dataset):
                     ##For future: may want to store to disk once we have loaded a pretrained model. However, at the
                     moment that is not necessary.##
         """
-        self.model_directory = os.path.join(data_directory, str(bias[1]))
+        self.model_directory = os.path.join(data_directory, str(bias))
         self.num_models = len(os.listdir(self.model_directory))
 
     def _build_digit_classifier(self):
@@ -67,5 +67,5 @@ class ModelDataset(Dataset):
 
 
 # When testing:
-# data = ModelDataset(bias=('strong', '0.02'), data_directory='/home/phil/Documents/Studium/DL/Project/train/')
-# print(data[2].get_weights())
+data = ModelDataset(bias='0.02', data_directory='/home/phil/Documents/Studium/DL/Project/train/')
+print(data[2].get_weights())
