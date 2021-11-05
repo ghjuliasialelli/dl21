@@ -20,7 +20,7 @@ class DigitData_Torch(TorchDataset):
         super().__init__()
         # Load the colored mnist dataset into memory
         self.path = path
-        self.cj_variance = cj_variance
+        self.cj_variance = cj_variance + '0'
         self.mode = mode
 
         # keys from np.load(..) are:

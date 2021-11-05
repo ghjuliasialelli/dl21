@@ -67,5 +67,5 @@ class ModelDataset(Dataset):
 
 
 # When testing:
-data = ModelDataset(bias='0.02', data_directory='/home/phil/Documents/Studium/DL/Project/train/')
-print(data[2].get_weights())
+#data = ModelDataset(bias='0.02', data_directory='/home/phil/Documents/Studium/DL/Project/train/')
+#print(data[2].get_weights())
