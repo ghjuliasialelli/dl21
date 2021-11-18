@@ -66,7 +66,7 @@ class DigitData_TF:
     """
     This is just a class to retrieve a Tensorflow dataset containing the Digit Data.
     ->  By calling .get_dataset we obtain a tensorflow dataset which can be used to load data into
-        a tensorflow model.
+        a tensorflow models.
     *   Batch size and other parameters can be used when calling _load(). TO BE IMPLEMENTED.
     """
     BATCH_SIZE = 64

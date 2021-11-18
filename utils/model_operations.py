@@ -21,18 +21,23 @@ class ModelDataset(Dataset):
         """"
         @:param:    bias
         @:param:    model_directory
-        @:param:    model should be the DigitClassifier model, as implemented in
+        @:param:    models should be the DigitClassifier models, as implemented in
                     get_weights.py
 
         Descr.:     This dataset can be used to feed the pretrained models. Either feed this using a torch dataloader
-                    to a torch model, or use ModelDataset[i] to fetch the i-th model from the directory.
-                    ##For future: may want to store to disk once we have loaded a pretrained model. However, at the
-                    moment that is not necessary.##
+                    to a torch models, or use ModelDataset[i] to fetch the i-th models from the directory.
+                    ##For future: may want to store to disk once we have loaded a pretrained models. However, at the
+                    moment this is not necessary.##
         """
         self.model_directory = os.path.join(data_directory, str(bias))
         self.num_models = len(os.listdir(self.model_directory))
 
     def _build_digit_classifier(self):
+        """
+        Build the digit classifier models (TF) that was used in the IFBID paper. Weights are loaded as shown
+        in load_model. Load_model() should be used to load a models with its weights into the dataset.
+        :return: Model architecture without pre-trained weights.
+        """
         model = Sequential()
         model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(28, 28, 3)))
         model.add(MaxPooling2D())
@@ -49,6 +54,21 @@ class ModelDataset(Dataset):
         model.add(Dense(10, activation='softmax'))
         model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
         return model
+
+    def print_digit_classifier_info(self, index: int, TF_summary: bool = False):
+        model = self.load_model(index)
+        if TF_summary:
+            print(model.summary())
+        else:
+            weights = model.get_weights()
+            n_layers = len(weights)
+            layer_info = []
+            print('--- --- ---')
+            for i in range(0, n_layers):
+                # Print information about the shape of the weights that are at each layer.
+                # May be more useful for planning than just the information given by TF.
+                print(f'Layer {i} shape of the Digit Classifier: {weights[i].shape}')
+                print('--- --- ---')
 
     def load_model(self, model_number: int):
         model = self._build_digit_classifier()

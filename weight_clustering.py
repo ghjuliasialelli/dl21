@@ -24,14 +24,14 @@ def build_umap(percentage):
         #print(np.stack([model_to_vec(model_data[i].get_weights()) for i in range(len(model_data))]).shape)
         ls = []
 
-        # Build 2D array of model weights..
+        # Build 2D array of models weights..
         # For debugging purposes: use 1% of the data with //100 or //10 (10% of data)
         for i in tqdm(range(len(model_data)//percentage), desc="Building 2D-Array"):
             #print(i/len(model_data))
             ls.append(model_to_vec(model_data[i].get_weights()))
-            # list of model weights (multiple layers)
-            #model = model_data[i].get_weights()
-            #tmp = np.concatenate([np.ravel(model[j]) for j in range(len(model))])
+            # list of models weights (multiple layers)
+            #models = model_data[i].get_weights()
+            #tmp = np.concatenate([np.ravel(models[j]) for j in range(len(models))])
             c_vals.append(float(b))
         arr2d = np.stack(ls)
         print(f'Shape after 2D-conversion: {arr2d.shape}')

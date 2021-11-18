@@ -29,7 +29,7 @@ def vec_to_digit(x):
 ###############################################################################
 #                       DIGIT CLASSIFIER MODEL
 
-# Create the TF - Keras model architecture
+# Create the TF - Keras models architecture
 model = Sequential()
 model.add(Conv2D(24,kernel_size=5,activation='relu', input_shape=(28,28,3)))
 model.add(MaxPooling2D())
@@ -49,16 +49,16 @@ model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accur
 # Load the weights into the architecture
 model.load_weights(train_dir + '/0.02/0.h5')
 
-print('Finished loading model')
+print('Finished loading models')
 
-# Print the model weights to check if they exist.
-# print(model.get_weights())
+# Print the models weights to check if they exist.
+# print(models.get_weights())
 
 db = DigitData_Torch(path=data_dir, cj_variance=('strong', "0.020"), mode='test')
 tfdataset = Dataset.from_tensor_slices((db.images, db.labels)).batch(32)
 
 print(db.images[0].shape)
-#print(model(torch.from_numpy(db.images[0]).unsqueeze(dim=0).numpy()))
+#print(models(torch.from_numpy(db.images[0]).unsqueeze(dim=0).numpy()))
 print(db.images.shape)
 
 out = model(db.images)
