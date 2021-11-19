@@ -96,15 +96,21 @@ class IFBID_Model(nn.Module):
     def convolutional_block(self, x, c, k=None):
         """Convolutions are followed by a relu activation function,
         and there is always 0.1 dropout afterwards"""
+        # ---
+        # Usage:
+        #   c sets channels of convolutions. -> Number of convolutional filters that our output by the conv.
+        #   !!! if using k, then set k = c.
+        #   WHEN DEBUGGING: USE ('Debug{i}', Print(i)) in the return OrderedDict to print dimension of x at layer i.
+        # ---
+
         d = x.shape[-1]
-        print(d)
         s = x.shape[0]
         if len(x.shape) > 2:
             # in convolutional layer (cl), either dxd or 1x1 kernel size, as seen on pg. 5
             layer_1 = nn.Conv2d(in_channels=x.shape[1], out_channels=c, kernel_size=(1, 1))
             # x = layer_1(x)
             if k is not None:
-                layer_2 = nn.MaxPool3d(kernel_size=(d, d, k))
+                layer_2 = nn.MaxPool3d(kernel_size=(k, d, d))
             else:
                 layer_2 = nn.MaxPool2d(kernel_size=(d, d))
             # or:
@@ -121,7 +127,7 @@ class IFBID_Model(nn.Module):
                 OrderedDict([
                     ('Layer1', layer_1),
                     ('Layer2', layer_2),
-                    ('Layer3', nn.Flatten())
+                    ('Layer3', nn.Flatten()),
                 ])
             )
         else:
