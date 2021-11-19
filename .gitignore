@@ -1,0 +1,3 @@
+# Ignore the data
+data/colored_mnist/**
+data/DigitWdb/**
