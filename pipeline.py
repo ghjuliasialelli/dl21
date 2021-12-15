@@ -23,7 +23,7 @@ classifier = ...
 ########################################
 # Interpretability study
 
-# two options : 
+# options : 
 
 # 1. Layer-wise ablation study w/ analysis of impact on classifier's performance
 
@@ -32,7 +32,6 @@ classifier = ...
 
 
 # 2. Using tools for feature importance, independent of classifier 
-# eg. XGBoost -> but needs some sort of encoding for X first (takes only numeric values)
 
 
 ########################################
