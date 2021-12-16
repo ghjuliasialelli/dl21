@@ -23,7 +23,7 @@ args = parser.parse_args()
 data = PhilipsModelDataset('0.02', args.path)
 if args.debug:
     pass
-    data_indices = list(range(0, len(data), 10))
+    data_indices = list(range(0, len(data), 5))
     data = torch.utils.data.Subset(data, data_indices)
 
 # train, val = PhilipsModelDataset('0.02', args.path), PhilipsModelDataset('0.03', args.path) # torch.utils.data.random_split(data, [0.8*len(data), 0.2*len(data)])

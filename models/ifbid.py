@@ -338,18 +338,14 @@ class Conv2D_IFBID_Model(IFBID_Model):
         pipeline = nn.Sequential(
                 OrderedDict([
                     ('Layer1', layer_1),
-                    #('Activation_1', nn.ReLU()),
-                    #('Activation_1', nn.Softmax()),
+                    ('Activation_1', nn.ReLU()),
                     ('Layer2', layer_2),
-                    #('Flatten_1', nn.Flatten(-2)),
                     ('Layer3', layer_3),
-                    ('Printer', Print()),
-                    #('Activation_2', nn.ReLU()),
-                    #('Activation_2', nn.Softmax()),
+                    #('Printer', Print()),
+                    ('Activation_2', nn.ReLU()),
                     ('Flatten_2', nn.Flatten()),
                     ('Reshape', Reshaper(-1)),
                     ('Layer4', layer_4),
-                    #('Activation_3', nn.Softmax())
                 ])
             )
         return pipeline
@@ -406,14 +402,14 @@ class Max1D_IFBID_Model(IFBID_Model):
                 OrderedDict([
                     ('Pre-Printer0', Print()),
                     ('Layer1', layer_1),
-                    #('Activation_1', nn.ReLU()),
+                    ('Activation_1', nn.ReLU()),
                     #('Activation_1', nn.Softmax()),
                     #('Reshape', Reshaper(-1)),
                     ('Printer0', Print()),
                     ('Layer2', layer_2),
                     ('Flatten', nn.Flatten()),
                     ('Printer', Print()),
-                    #('Activation_2', nn.ReLU()),
+                    ('Activation_2', nn.ReLU()),
                     #('Activation_2', nn.Softmax()),
                 ])
             )
