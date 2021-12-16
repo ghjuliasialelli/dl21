@@ -29,8 +29,10 @@ class ModelDataset(Dataset):
                     ##For future: may want to store to disk once we have loaded a pretrained models. However, at the
                     moment this is not necessary.##
         """
+        super(ModelDataset, self).__init__()
         self.model_directory = os.path.join(data_directory, str(bias))
         self.num_models = len(os.listdir(self.model_directory))
+        self.bias = bias
 
     def _build_digit_classifier(self):
         """
@@ -75,6 +77,9 @@ class ModelDataset(Dataset):
         model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
         return model
 
+    def concat(self):
+        pass
+
     def __len__(self):
         return self.num_models
 
@@ -86,6 +91,60 @@ class ModelDataset(Dataset):
         return f'ModelDataset of length {len(self)}'
 
 
-# When testing:
-#data = ModelDataset(bias='0.02', data_directory='/home/phil/Documents/Studium/DL/Project/train/')
-#print(data[2].get_weights())
+class PhilipsModelDataset(ModelDataset):
+
+    def __init__(self, bias: str, data_directory: str,):
+        super(PhilipsModelDataset, self).__init__(bias, data_directory)
+        self.data_directory = data_directory
+
+    def __len__(self):
+        # lenths of the subdirectories are 2000
+        length = 0
+        for directory in os.listdir(self.data_directory):
+            length = length + len(os.listdir(os.path.join(self.data_directory, directory)))
+        return length
+
+    def load_model_k(self, bias: str, model_number: int):
+        model = self._build_digit_classifier()
+        model.load_weights(os.path.join(self.data_directory, bias, f'{model_number}.h5'))
+        return model
+
+    def __getitem__(self, index):
+        dir_index = index // 2000
+        model_number = index % 2000
+        biases = ['0.02', '0.03', '0.04', '0.05']
+        model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
+
+        i = 0
+        return_dict = {}
+        for layer in model.layers:
+            #print(layer)
+            if layer.__class__.__name__ == 'Conv2D': # or layer.__class__.__name__ == 'Dense':
+                weights = layer.get_weights()[0]
+                ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                return_dict[f'layer_{i}'] = ws
+                i = i + 1
+        zeros = np.zeros(4)
+        zeros[dir_index] = 1
+        sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros)}
+        # print(f'Sample: {sample["bias"]}')
+        return sample
+
+
+class Loading_Dataset(Dataset):
+
+    def __init__(self, biases, datasets):
+        super(Loading_Dataset, self).__init__()
+        self.data = datasets
+        self.lengths = []
+        for dataset in datasets:
+            self.lengths.append(len(dataset))
+        self.biases = biases
+
+    def __len__(self):
+        pass
+
+    def __getitem__(self, index):
+        for i in range(len(self.lengths)):
+            if index - self.lengths[0] < 0:
+                return self.data[i][index] #, biases[i]
