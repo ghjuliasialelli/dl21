@@ -3,6 +3,7 @@
 # Description:  This file implements the IFBID Model: a models for inference-free bias detection learning
 #               The paper can be found at https://arxiv.org/abs/2109.04374
 # ------------
+
 import numpy as np
 import torch
 from torch import nn
@@ -41,7 +42,7 @@ class IFBID_Model(nn.Module):
     Input to the model is
     """
 
-    def __init__(self, layer_shapes, batch_size=1):
+    def __init__(self, layer_shapes, num_classes=2, batch_size=1):
         super(IFBID_Model, self).__init__()
         self.layer_shapes = layer_shapes
         # print(f'Shape: {layer_shapes[0]}')
@@ -51,6 +52,7 @@ class IFBID_Model(nn.Module):
         print([np.prod(layer_shapes[i]) for i in range(len(layer_shapes))])
         print(np.sum([np.prod(layer_shapes[i]) for i in range(len(layer_shapes))]))
         self.layers = None
+        self.num_classes = num_classes
         """self.layers = nn.Sequential(
             #nn.Flatten(start_dim=0, end_dim=-1),
             nn.Linear(in_features=(int(batch_size*np.sum([np.prod(layer_shapes[i])
@@ -219,8 +221,8 @@ class Better_Dense(IFBID_Model):
     overfitting.
     """
 
-    def __init__(self, layer_shapes, batch_size=1):
-        super(Better_Dense, self).__init__(layer_shapes, batch_size)
+    def __init__(self, layer_shapes, num_classes=2, batch_size=1):
+        super(Better_Dense, self).__init__(layer_shapes, num_classes, batch_size)
 
         self.blocks = []
         self.block_0 = nn.Sequential(
@@ -251,8 +253,8 @@ class Better_Dense(IFBID_Model):
             # torch.nn.Softmax()
         )
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=900, out_features=4),
-            # nn.Linear(in_features=12, out_features=4),
+            # nn.Linear(in_features=900, out_features=4),
+            nn.Linear(in_features=900, out_features=self.num_classes*batch_size),
             # nn.ReLU()
             torch.nn.Softmax()
         )
@@ -288,8 +290,8 @@ class Reshaper(nn.Module):
 
 class Conv2D_IFBID_Model(IFBID_Model):
 
-    def __init__(self, layer_shapes, batch_size=1):
-        super(Conv2D_IFBID_Model, self).__init__(layer_shapes, batch_size=1)
+    def __init__(self, layer_shapes, num_classes, batch_size=1):
+        super(Conv2D_IFBID_Model, self).__init__(layer_shapes, num_classes, batch_size=1)
 
         """d = x[-1]
         s = x[0]
@@ -303,7 +305,7 @@ class Conv2D_IFBID_Model(IFBID_Model):
         self.block_1 = self.build_block(1, layer_shapes[1], c=100, d=3, m=m)
         self.block_2 = self.build_block(2, layer_shapes[2], c=100, d=3, m=m)
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m, out_features=4), # in features should be 3*actual_m
+            nn.Linear(in_features=3*m, out_features=self.num_classes*batch_size),  # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
             torch.nn.Softmax()
@@ -353,8 +355,8 @@ class Conv2D_IFBID_Model(IFBID_Model):
 
 class Max1D_IFBID_Model(IFBID_Model):
 
-    def __init__(self, layer_shapes, batch_size=1):
-        super(Max1D_IFBID_Model, self).__init__(layer_shapes, batch_size=1)
+    def __init__(self, layer_shapes, num_classes, batch_size=1):
+        super(Max1D_IFBID_Model, self).__init__(layer_shapes, num_classes, batch_size=1)
 
         """d = x[-1]
         s = x[0]
@@ -368,7 +370,7 @@ class Max1D_IFBID_Model(IFBID_Model):
         self.block_1 = self.build_block(1, layer_shapes[1], c=100, d=3, m=m, k=5)
         self.block_2 = self.build_block(2, layer_shapes[2], c=100, d=3, m=m, k=5)
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m, out_features=4), # in features should be 3*actual_m
+            nn.Linear(in_features=3*m, out_features=self.num_classes*batch_size), # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
             torch.nn.Softmax()
