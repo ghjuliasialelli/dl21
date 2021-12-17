@@ -97,3 +97,44 @@ class ModelWrapper(pl.LightningModule):
 
     def test_dataloader(self):
         return DataLoader(self.dataset_split[2], batch_size=self.batch_size)
+
+
+class MNIST_Classifier_Wrapper(pl.LightningModule):
+
+    def __init__(self, model_architecture, learning_rate, loss, dataset=None, dataset_distr=None,
+                 batch_size=1):
+        super(MNIST_Classifier_Wrapper, self).__init__()
+        self._model = model_architecture
+        self.lr = learning_rate
+        self.loss = loss
+        if dataset is not None:
+            self.dataset_split = random_split(dataset, dataset_distr)
+        self.batch_size = batch_size
+
+    def forward(self, x):
+        return self._model(x)
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
+
+    def training_step(self, batch, batch_idx):
+        x = batch['image']
+        y = batch['label']
+        y_hat = self._model(x)
+        return self.loss(y_hat.float(), y.float())
+
+    def validation_step(self, batch, batch_idx):
+        x = batch['image']
+        y = batch['label']
+        y_hat = self._model(x)
+        return self.loss(y_hat.float(), y.float())
+
+    def train_dataloader(self):
+        return DataLoader(self.dataset_split[0], batch_size=self.batch_size,
+                          shuffle=True, drop_last=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.dataset_split[1], batch_size=self.batch_size)
+
+    def test_dataloader(self):
+        return DataLoader(self.dataset_split[2], batch_size=self.batch_size)
