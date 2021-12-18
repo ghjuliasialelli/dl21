@@ -1,3 +1,9 @@
+# ------------
+# Author:       Philip Toma
+# Description:  This file implements the datasets for model weights.
+# ------------
+
+
 import h5py
 import os
 import sys
@@ -93,9 +99,11 @@ class ModelDataset(Dataset):
 
 class PhilipsModelDataset(ModelDataset):
 
-    def __init__(self, bias: str, data_directory: str,):
+    def __init__(self, bias: str, data_directory: str, num_classes):
         super(PhilipsModelDataset, self).__init__(bias, data_directory)
         self.data_directory = data_directory
+        # set the number of classes: 4 or 2
+        self.num_classes = num_classes#4    # or =2
 
     def __len__(self):
         # lenths of the subdirectories are 2000
@@ -124,7 +132,15 @@ class PhilipsModelDataset(ModelDataset):
                 ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
                 return_dict[f'layer_{i}'] = ws
                 i = i + 1
-        zeros = np.zeros(4)
+        zeros = np.zeros(self.num_classes)
+
+        # check if we're only classifying 'biased/non-biased' or 'very high, high, low, very low'.
+        if self.num_classes == 2:
+            if dir_index == 1:
+                dir_index = 0
+            elif dir_index >= 2:
+                dir_index = 1
+
         zeros[dir_index] = 1
         sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros)}
         # print(f'Sample: {sample["bias"]}')

@@ -1,3 +1,11 @@
+# ------------
+# Author:       Philip Toma
+# Description:  This file implements the training pipeline of the IFBID Model.
+# Usage:        python3 trainer.py [--debug] [--epochs 10] [path]
+#               where the []-brackets mean an entry is optional, but should be used.
+#               For more info:      python3 trainer.py --help
+# ------------
+
 import pytorch_lightning as pl
 import torch
 
@@ -20,23 +28,14 @@ args = parser.parse_args()
 
 # Initialise model data
 # data = ModelDataset('0.02', args.path)
-data = PhilipsModelDataset('0.02', args.path)
+data = PhilipsModelDataset('0.02', args.path, num_classes=4)
 if args.debug:
     pass
-    data_indices = list(range(0, len(data), 5))
+    data_indices = list(range(0, len(data), 2))
     data = torch.utils.data.Subset(data, data_indices)
-
-# train, val = PhilipsModelDataset('0.02', args.path), PhilipsModelDataset('0.03', args.path) # torch.utils.data.random_split(data, [0.8*len(data), 0.2*len(data)])
-# train_loader = torch.utils.data.DataLoader(train)
-# val_dataloader = torch.utils.data.DataLoader(val)
-
 
 # get shapes for NN-initialisation:
 m = data[0]['model_weights']
-
-tensor_dim = np.sum([np.prod(m[layer].shape) for layer in m])
-print(f'Size: {tensor_dim}')
-#print(m)
 shapes = []
 for layer in m:
     shapes.append(m[layer].shape)
@@ -45,9 +44,9 @@ print(shapes)
 # Initialise the classifier model for training
 batch_size = 1
 # classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
-# classifier = Dense_IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
-#classifier = Better_Dense(layer_shapes=shapes, batch_size=batch_size)
-classifier = Conv2D_IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
+# classifier = Dense_IFBID_Model(layer_shapes=shapes, num_classes=2, batch_size=batch_size)
+# classifier = Better_Dense(layer_shapes=shapes, num_classes=2, batch_size=batch_size)
+classifier = Conv2D_IFBID_Model(layer_shapes=shapes, num_classes=4, batch_size=batch_size)
 #classifier = Max1D_IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 
 #loss = torch.nn.L1Loss()
@@ -73,6 +72,5 @@ trainer.fit(lightning_model) #, [train_loader, val_dataloader])
 
 # Option: use the testing dataset (/test instead of /train) for further testing. Allows us to use more data for training.
 # the bias doesn't matter for the below dataset.
-
 # Test the model.
 trainer.test(lightning_model)
