@@ -127,9 +127,14 @@ class PhilipsModelDataset(ModelDataset):
         return_dict = {}
         for layer in model.layers:
             #print(layer)
-            if layer.__class__.__name__ == 'Conv2D': # or layer.__class__.__name__ == 'Dense':
+            if layer.__class__.__name__ == 'Conv2D':
                 weights = layer.get_weights()[0]
                 ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                return_dict[f'layer_{i}'] = ws
+                i = i + 1
+            elif layer.__class__.__name__ == 'Dense':
+                weights = layer.get_weights()[0]
+                ws = torch.from_numpy(weights)
                 return_dict[f'layer_{i}'] = ws
                 i = i + 1
         zeros = np.zeros(self.num_classes)

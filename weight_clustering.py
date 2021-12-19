@@ -23,12 +23,18 @@ def build_umap(percentage):
         model_data = ModelDataset(bias=b, data_directory='/home/phil/Documents/Studium/DL/Project/train/')
         #print(np.stack([model_to_vec(model_data[i].get_weights()) for i in range(len(model_data))]).shape)
         ls = []
-
+        #print(model_data.print_digit_classifier_info(0, True))
         # Build 2D array of models weights..
         # For debugging purposes: use 1% of the data with //100 or //10 (10% of data)
         for i in tqdm(range(len(model_data)//percentage), desc="Building 2D-Array"):
             #print(i/len(model_data))
-            ls.append(model_to_vec(model_data[i].get_weights()))
+            #ls.append(model_to_vec(model_data[i].get_weights()))
+
+            # Only use first dense layer:
+            ls.append(model_to_vec(model_data[i].get_weights()[7]))
+
+            # Only use the convolutional layers:
+            #ls.append(model_to_vec(model_data[i].get_weights()[:4]))
             # list of models weights (multiple layers)
             #models = model_data[i].get_weights()
             #tmp = np.concatenate([np.ravel(models[j]) for j in range(len(models))])
@@ -56,5 +62,6 @@ def build_umap(percentage):
 
 
 # percentage = 0.1 -> 10%, 0.01 -> 1% of the models used; 1 -> 100% of the models used.
-percentage = 0.1
+# percentage = 0.1
+percentage = 1.0
 build_umap(percentage=int(1/percentage))

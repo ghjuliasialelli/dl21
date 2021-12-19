@@ -54,30 +54,33 @@ class ModelWrapper(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x = batch['model_weights']
-        y = batch['bias'][0]
+        y = batch['bias'].reshape(-1)
+        # y = batch['bias']
         y_hat = self._model(x)
         print(f'y: {y}\ny_hat: {y_hat}')
+
         return self.loss(y_hat.float(), y.float())
 
     def validation_step(self, batch, batch_idx):
         x = batch['model_weights']
-        y = batch['bias'][0]
+        y = batch['bias'].reshape(-1)
+        # y = batch['bias'][0]
         # print(y.shape)
         y_hat = self._model(x)
         return self.loss(y_hat.float(), y.float())
 
     def test_step(self, batch, batch_idx):
         x = batch['model_weights']
-        y = batch['bias'][0]
+        y = batch['bias'].reshape(-1)
+        # y = batch['bias'][0]
         y_hat = self._model(x)
-        #y_hat = self.transform.forward(self._model(x))
         print(f'y: {y}\ny_hat: {y_hat}')
         loss = self.loss(y_hat.float(), y.float())
         y_hat = self.transform.forward(y_hat)
 
         # Change when changing number of classes to approximate
-        # accuracy = int(sum(y == y_hat)) == 4
-        accuracy = int(sum(y == y_hat)) == 2
+        accuracy = int(sum(y == y_hat)) == self._model.num_classes
+        # accuracy = int(sum(y == y_hat)) == 2
 
         self.test_accuracy = self.test_accuracy + int(accuracy)
         self.test_size = self.test_size + 1

@@ -42,7 +42,7 @@ class IFBID_Model(nn.Module):
     Input to the model is
     """
 
-    def __init__(self, layer_shapes, num_classes=2, batch_size=1):
+    def __init__(self, layer_shapes, use_dense_layers=False, num_classes=2, batch_size=1):
         super(IFBID_Model, self).__init__()
         self.layer_shapes = layer_shapes
         # print(f'Shape: {layer_shapes[0]}')
@@ -53,6 +53,8 @@ class IFBID_Model(nn.Module):
         print(np.sum([np.prod(layer_shapes[i]) for i in range(len(layer_shapes))]))
         self.layers = None
         self.num_classes = num_classes
+        self.batch_size = batch_size
+        self.use_dense_layers = use_dense_layers
         """self.layers = nn.Sequential(
             #nn.Flatten(start_dim=0, end_dim=-1),
             nn.Linear(in_features=(int(batch_size*np.sum([np.prod(layer_shapes[i])
@@ -188,7 +190,7 @@ class IFBID_Model(nn.Module):
 class Dense_IFBID_Model(IFBID_Model):
 
     def __init__(self, layer_shapes, batch_size=1):
-        super(Dense_IFBID_Model, self).__init__(layer_shapes, batch_size)
+        super(Dense_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=False, num_classes=4, batch_size=batch_size)
         self.layers = nn.Sequential(
             # nn.Flatten(start_dim=0, end_dim=-1),
             nn.Linear(in_features=(int(batch_size * np.sum([np.prod(layer_shapes[i])
@@ -222,11 +224,11 @@ class Better_Dense(IFBID_Model):
     """
 
     def __init__(self, layer_shapes, num_classes=2, batch_size=1):
-        super(Better_Dense, self).__init__(layer_shapes, num_classes, batch_size)
+        super(Better_Dense, self).__init__(layer_shapes, False, num_classes, batch_size)
 
         self.blocks = []
         self.block_0 = nn.Sequential(
-            #nn.Flatten(),
+            # nn.Flatten(),
             nn.Linear(in_features=(int(batch_size * np.prod(layer_shapes[0]))),
                       out_features=300),
             # nn.Sigmoid()
@@ -235,7 +237,7 @@ class Better_Dense(IFBID_Model):
             # torch.nn.Softmax()
         )
         self.block_1 = nn.Sequential(
-            #nn.Flatten(),
+            # nn.Flatten(),
             nn.Linear(in_features=(int(batch_size * np.prod(layer_shapes[1]))),
                       out_features=300),
             # nn.Sigmoid()
@@ -244,7 +246,7 @@ class Better_Dense(IFBID_Model):
             # torch.nn.Softmax()
         )
         self.block_2 = nn.Sequential(
-            #nn.Flatten(),
+            # nn.Flatten(),
             nn.Linear(in_features=(int(batch_size * np.prod(layer_shapes[2]))),
                       out_features=300),
             # nn.Sigmoid()
@@ -254,7 +256,7 @@ class Better_Dense(IFBID_Model):
         )
         self.final_dense = nn.Sequential(
             # nn.Linear(in_features=900, out_features=4),
-            nn.Linear(in_features=900, out_features=self.num_classes*batch_size),
+            nn.Linear(in_features=900, out_features=self.num_classes * batch_size),
             # nn.ReLU()
             torch.nn.Softmax()
         )
@@ -277,7 +279,7 @@ class Better_Dense(IFBID_Model):
 
 # Helper for Conv2D Model:
 class Reshaper(nn.Module):
-    
+
     def __init__(self, dim):
         super(Reshaper, self).__init__()
         self.dim = dim
@@ -285,13 +287,13 @@ class Reshaper(nn.Module):
     def forward(self, x):
         x = x.reshape(self.dim)
         return x.unsqueeze(0)
-        #return x
+        # return x
 
 
 class Conv2D_IFBID_Model(IFBID_Model):
 
-    def __init__(self, layer_shapes, num_classes, batch_size=1):
-        super(Conv2D_IFBID_Model, self).__init__(layer_shapes, num_classes, batch_size=1)
+    def __init__(self, layer_shapes, use_dense, num_classes, batch_size=1):
+        super(Conv2D_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=use_dense, num_classes=num_classes, batch_size=batch_size)
 
         """d = x[-1]
         s = x[0]
@@ -301,11 +303,22 @@ class Conv2D_IFBID_Model(IFBID_Model):
             else:
                 layer_2 = nn.MaxPool2d(kernel_size=(d, d))"""
         m = 100
+        if use_dense:
+            m2 = 10
+        else:
+            m2 = 0
         self.block_0 = self.build_block(0, layer_shapes[0], c=100, d=3, m=m)
         self.block_1 = self.build_block(1, layer_shapes[1], c=100, d=3, m=m)
         self.block_2 = self.build_block(2, layer_shapes[2], c=100, d=3, m=m)
+
+        # The info below is not used in the baseline!
+        if use_dense:
+            self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
+            # self.block_4 = self.build_block(4, layer_shapes[4], c=100, d=3, m=m)
+
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m, out_features=self.num_classes*batch_size),  # in features should be 3*actual_m
+            nn.Linear(in_features=3*m*batch_size + m2, out_features=self.num_classes * batch_size),
+            # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
             torch.nn.Softmax()
@@ -320,15 +333,36 @@ class Conv2D_IFBID_Model(IFBID_Model):
         # Build a flattened tensor of all layers.
         output_tensor = []
         # for layer in model:
-        output_tensor.append(self.block_0(model['layer_0'].squeeze()))
+        """output_tensor.append(self.block_0(model['layer_0'].squeeze()))
         output_tensor.append(self.block_1(model['layer_1'].squeeze()))
         output_tensor.append(self.block_2(model['layer_2'].squeeze()))
+        """
+        shape = model['layer_0'].shape
+        output_tensor.append(self.block_0(model['layer_0'].reshape((shape[1] * self.batch_size,
+                                                                    shape[2], shape[3], shape[4]))))
+        shape = model['layer_1'].shape
+        output_tensor.append(self.block_1(model['layer_1'].reshape((shape[1] * self.batch_size,
+                                                                    shape[2], shape[3], shape[4]))))
+        shape = model['layer_2'].shape
+        output_tensor.append(self.block_2(model['layer_2'].reshape((shape[1] * self.batch_size,
+                                                                    shape[2], shape[3], shape[4]))))
+        # BELOW NOT USED FOR BASELINE!
+        if self.use_dense_layers:
+            output_tensor.append(self.block_3(model['layer_3']))
+
         for i in range(len(output_tensor)):
             output_tensor[i] = output_tensor[i].squeeze()
-        """for el in output_tensor:
-            print(el.shape)"""
+
         output_tensor = torch.cat(output_tensor)
+        #print(output_tensor.shape)
         return self.final_dense(output_tensor)
+
+    def build_d_block(self, i, layer_shapes, m):
+        return nn.Sequential(
+            Reshaper(-1),
+            nn.Linear(in_features=layer_shapes[0]*layer_shapes[1], out_features=m),
+            nn.ReLU()
+        )
 
     def build_block(self, i, layer_shapes, c, d, m):
         layer_1 = nn.Conv2d(in_channels=layer_shapes[1], out_channels=c, kernel_size=(1, 1))
@@ -336,20 +370,20 @@ class Conv2D_IFBID_Model(IFBID_Model):
         layer_3 = nn.Conv1d(in_channels=c, out_channels=m, kernel_size=(1, 1))
         layer_4 = nn.MaxPool1d(layer_shapes[0])
 
-        print(layer_shapes)
+        #print(layer_shapes)
         pipeline = nn.Sequential(
-                OrderedDict([
-                    ('Layer1', layer_1),
-                    ('Activation_1', nn.ReLU()),
-                    ('Layer2', layer_2),
-                    ('Layer3', layer_3),
-                    #('Printer', Print()),
-                    ('Activation_2', nn.ReLU()),
-                    ('Flatten_2', nn.Flatten()),
-                    ('Reshape', Reshaper(-1)),
-                    ('Layer4', layer_4),
-                ])
-            )
+            OrderedDict([
+                ('Layer1', layer_1),
+                ('Activation_1', nn.ReLU()),
+                ('Layer2', layer_2),
+                ('Layer3', layer_3),
+                # ('Printer', Print()),
+                ('Activation_2', nn.ReLU()),
+                ('Flatten_2', nn.Flatten()),
+                ('Reshape', Reshaper(-1)),
+                ('Layer4', layer_4),
+            ])
+        )
         return pipeline
 
 
@@ -370,7 +404,8 @@ class Max1D_IFBID_Model(IFBID_Model):
         self.block_1 = self.build_block(1, layer_shapes[1], c=100, d=3, m=m, k=5)
         self.block_2 = self.build_block(2, layer_shapes[2], c=100, d=3, m=m, k=5)
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m, out_features=self.num_classes*batch_size), # in features should be 3*actual_m
+            nn.Linear(in_features=3 * m, out_features=self.num_classes * batch_size),
+            # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
             torch.nn.Softmax()
@@ -401,18 +436,18 @@ class Max1D_IFBID_Model(IFBID_Model):
 
         print(layer_shapes)
         pipeline = nn.Sequential(
-                OrderedDict([
-                    ('Pre-Printer0', Print()),
-                    ('Layer1', layer_1),
-                    ('Activation_1', nn.ReLU()),
-                    #('Activation_1', nn.Softmax()),
-                    #('Reshape', Reshaper(-1)),
-                    ('Printer0', Print()),
-                    ('Layer2', layer_2),
-                    ('Flatten', nn.Flatten()),
-                    ('Printer', Print()),
-                    ('Activation_2', nn.ReLU()),
-                    #('Activation_2', nn.Softmax()),
-                ])
-            )
+            OrderedDict([
+                ('Pre-Printer0', Print()),
+                ('Layer1', layer_1),
+                ('Activation_1', nn.ReLU()),
+                # ('Activation_1', nn.Softmax()),
+                # ('Reshape', Reshaper(-1)),
+                ('Printer0', Print()),
+                ('Layer2', layer_2),
+                ('Flatten', nn.Flatten()),
+                ('Printer', Print()),
+                ('Activation_2', nn.ReLU()),
+                # ('Activation_2', nn.Softmax()),
+            ])
+        )
         return pipeline

@@ -29,13 +29,16 @@ args = parser.parse_args()
 # Initialise model data
 # data = ModelDataset('0.02', args.path)
 data = PhilipsModelDataset('0.02', args.path, num_classes=4)
+data.print_digit_classifier_info(0, True)
+
 if args.debug:
     pass
-    data_indices = list(range(0, len(data), 2))
+    data_indices = list(range(0, len(data), 10))
     data = torch.utils.data.Subset(data, data_indices)
 
 # get shapes for NN-initialisation:
 m = data[0]['model_weights']
+
 shapes = []
 for layer in m:
     shapes.append(m[layer].shape)
@@ -46,7 +49,7 @@ batch_size = 1
 # classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 # classifier = Dense_IFBID_Model(layer_shapes=shapes, num_classes=2, batch_size=batch_size)
 # classifier = Better_Dense(layer_shapes=shapes, num_classes=2, batch_size=batch_size)
-classifier = Conv2D_IFBID_Model(layer_shapes=shapes, num_classes=4, batch_size=batch_size)
+classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
 #classifier = Max1D_IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 
 #loss = torch.nn.L1Loss()
