@@ -44,9 +44,6 @@ class MNISTClassifier(Module):
         state_dict['dense2.bias'] = weights['layer_9'][0, :, 0, 0, 0]
         self.load_state_dict(state_dict, strict=True)
 
-
-
-
 from tensorflow.keras.applications import * #Efficient Net included here
 from tensorflow.keras import models
 from tensorflow.keras import layers
@@ -82,4 +79,3 @@ print(model.summary())
 ws = model.get_weights()
 print(ws[len(model.get_weights())-2].shape)
 # Hypothesis: Biased training will lead to bias effecting the dense layer, which for the EfficientNet is:
-# ws[len(model.get_weights())-2 : ]
