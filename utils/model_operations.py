@@ -16,6 +16,7 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
+import pandas as pd
 
 
 # For conversion from tensorflow to pytorch, see:
@@ -148,6 +149,70 @@ class PhilipsModelDataset(ModelDataset):
 
         zeros[dir_index] = 1
         sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros)}
+        # print(f'Sample: {sample["bias"]}')
+        return sample
+
+
+class LucasModelDataset(Dataset):
+
+    def __init__(self, device, data_files: list, use_weights=True, use_biases=False, only_conv=False):
+        super(LucasModelDataset, self).__init__()
+        # set the number of classes: 4 or 2
+        self.use_weights = use_weights
+        self.use_biases = use_biases
+        self.only_conv = only_conv
+        self.device = device
+
+        self.data = None
+
+        for file in data_files:
+            if self.data is None:
+                self.data = pd.read_pickle(file)
+            else:
+                self.data = pd.concat([self.data, pd.read_pickle(file)], ignore_index=True)
+
+    def __len__(self):
+        # lenths of the subdirectories are 2000
+        return len(self.data)
+
+    def __getitem__(self, index):
+        model = self.data.iloc[index]
+
+        i = 0
+        return_dict = {}
+        for layer in model['layers']:
+            #print(layer)
+            if layer['name'] == 'Conv2D':
+                weights = layer['weights']
+                biases = layer['bias']
+                if self.use_weights:
+                    ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                    return_dict[f'layer_{i}'] = ws.float().to(self.device)
+                    i += 1
+                if self.use_biases:
+                    bs = torch.from_numpy(biases).unsqueeze(1).unsqueeze(2).unsqueeze(3)
+                    return_dict[f'layer_{i}'] = bs.float().to(self.device)
+                    i += 1
+            elif layer['name'] == 'Dense' and not self.only_conv:
+                weights = layer['weights']
+                biases = layer['bias']
+                if self.use_weights:
+                    ws = torch.permute(torch.from_numpy(weights), (1, 0)).unsqueeze(2).unsqueeze(3)
+                    return_dict[f'layer_{i}'] = ws.float().to(self.device)
+                    i += 1
+                if self.use_biases:
+                    bs = torch.from_numpy(biases).unsqueeze(1).unsqueeze(2).unsqueeze(3)
+                    return_dict[f'layer_{i}'] = bs.float().to(self.device)
+                    i += 1
+
+        zeros = np.zeros((4))
+
+        for i, b in enumerate(['0.02', '0.03', '0.04', '0.05']):
+            if b == model['bias']:
+                zeros[i] = 1
+                break
+
+        sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros).float().to(self.device)}
         # print(f'Sample: {sample["bias"]}')
         return sample
 

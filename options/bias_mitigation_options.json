@@ -1,0 +1,13 @@
+{
+  "network": "conv2d_ifbid",
+  "pretrained_network_weights_path": "data/trained/conv2d_ifbid2/model-latest.pth",
+  "num_samples": 10,
+  "use_weights": true,
+  "use_biases": true,
+  "bias_metrics": ["unbiased_accuracy"],
+  "method": {
+    "name": "fast gradient sign method",
+    "epsilon": 2e-2,
+    "steps": 1
+  }
+}

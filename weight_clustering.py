@@ -1,7 +1,7 @@
 import umap
 import torch
 import numpy as np
-
+import scprep
 
 from tqdm import tqdm
 from sklearn.decomposition import PCA
@@ -27,14 +27,17 @@ def build_umap(percentage):
         # Build 2D array of models weights..
         # For debugging purposes: use 1% of the data with //100 or //10 (10% of data)
         for i in tqdm(range(len(model_data)//percentage), desc="Building 2D-Array"):
-            #print(i/len(model_data))
-            #ls.append(model_to_vec(model_data[i].get_weights()))
+            # print(i/len(model_data))
+            # ls.append(model_to_vec(model_data[i].get_weights()))
 
             # Only use first dense layer:
-            ls.append(model_to_vec(model_data[i].get_weights()[7]))
+            # ls.append(model_to_vec(model_data[i].get_weights()[7]))
+
+            # Only use final dense layer:
+            ls.append(model_to_vec(model_data[i].get_weights()[8]))
 
             # Only use the convolutional layers:
-            #ls.append(model_to_vec(model_data[i].get_weights()[:4]))
+            # ls.append(model_to_vec(model_data[i].get_weights()[:4]))
             # list of models weights (multiple layers)
             #models = model_data[i].get_weights()
             #tmp = np.concatenate([np.ravel(models[j]) for j in range(len(models))])
@@ -47,12 +50,21 @@ def build_umap(percentage):
     arr2d = np.concatenate(res_ls)
     print(arr2d.shape)
     print(arr2d.max(axis=1).shape)
+
+    dimred = scprep.reduce.SparseInputPCA(n_components=20)
+    # dimred = scprep.reduce.pca(n_components=20)
+    # dimred = scprep.reduce.AutomaticDimensionSVD(n_components='auto', eps=0.3, algorithm='randomized',
+    #                                             n_iter=10, random_state=None, tol=0.0)
+    # dimred = scprep.reduce.InvertibleRandomProjection(n_components=20) # No good results.
+    X_new = dimred.fit_transform(arr2d)
+
     #arr2d = arr2d.transpose() / arr2d.max(axis=1)
     print(f'Resulting shape: {arr2d.shape}')
 
     fit = umap.UMAP()
-    #u = fit.fit_transform(arr2d.transpose())
-    u = fit.fit_transform(arr2d)
+    # u = fit.fit_transform(arr2d.transpose())
+    # u = fit.fit_transform(arr2d)
+    u = fit.fit_transform(X_new)
     print(u.shape)
     plt.scatter(u[:, 0], u[:, 1], c=c_vals)
     plt.xlabel("UMAP1")

@@ -3,46 +3,40 @@
 # Description:  This file trains an arbitrary MNIST-classifier architecture.
 # ------------
 
+from models.MNIST_classifiers import *
 
-import pytorch_lightning as pl
-import torch
+from keras.preprocessing.image import ImageDataGenerator
+import os
+import shutil
+import pandas as pd
+from sklearn import model_selection
+from tqdm import tqdm
+from tensorflow.keras import optimizers
+import tensorflow as tf
 
-from utils.model_operations import *
-from utils.lightning_wrappers import *
-from models.ifbid import *
 
-import argparse
+TRAIN_IMAGES_PATH = './data/train'
+VAL_IMAGES_PATH = './data/test'
 
-# define argument parser. The parser will be used when calling:
-# python3 trainer.py --argument1 --argument2
-parser = argparse.ArgumentParser(description='Run Model Training.')
-parser.add_argument('--epochs', type=int, default=10,
-                    help='number of epochs for model training.')
-parser.add_argument('--debug', action='store_true',
-                    help='set --debug flag for low computational impact.')
-parser.add_argument('path', type=str, default='./',
-                    help='path to the model data.')
-args = parser.parse_args()
+batch_size = 12
 
-# Initialise model data
-data = None
-
-if args.debug:
-    pass
-    data_indices = list(range(0, len(data), 2))
-    data = torch.utils.data.Subset(data, data_indices)
-
-# Initialise the classifier model for training
-batch_size = 1
-classifier = None
-loss = None
-
-# Initialise pl model and trainer
-lightning_model = MNIST_Classifier_Wrapper(model_architecture=classifier, learning_rate=1e-3, loss=loss, dataset=data,
-                                           dataset_distr=[int(0.5*len(data)), int(0.25*len(data)), int(0.25*len(data))],
-                                           batch_size=batch_size)
-
-trainer = pl.Trainer(max_epochs=args.epochs, reload_dataloaders_every_n_epochs=2)
-trainer.fit(lightning_model)
-# Optional: Test the model
-# trainer.test(lightning_model)
+test_datagen = ImageDataGenerator(rescale=1.0 / 255)train_generator = train_datagen.flow_from_directory(
+    # This is the target directory
+    TRAIN_IMAGES_PATH,
+    # All images will be resized to target height and width.
+    target_size=(32, 32),
+    batch_size=batch_size,
+    # Since we use categorical_crossentropy loss, we need categorical labels
+    class_mode="categorical",
+)
+validation_generator = test_datagen.flow_from_directory(
+    VAL_IMAGES_PATH,
+    target_size=(32, 32),
+    batch_size=batch_size,
+    class_mode="categorical",
+)
+model.compile(
+    loss="categorical_crossentropy",
+    optimizer=optimizers.RMSprop(lr=2e-5),
+    metrics=["acc"],
+)
