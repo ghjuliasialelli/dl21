@@ -189,13 +189,13 @@ class IFBID_Model(nn.Module):
 
 class Dense_IFBID_Model(IFBID_Model):
 
-    def __init__(self, layer_shapes, batch_size=1):
-        super(Dense_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=False, num_classes=4, batch_size=batch_size)
+    def __init__(self, layer_shapes, use_dense, num_classes, batch_size=1):
+        super(Dense_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=use_dense, num_classes=num_classes,
+                                                batch_size=batch_size)
         self.layers = nn.Sequential(
             # nn.Flatten(start_dim=0, end_dim=-1),
-            nn.Linear(in_features=(int(batch_size * np.sum([np.prod(layer_shapes[i])
-                                                            for i in range(len(layer_shapes))]))),
-                      out_features=4),
+            nn.Linear(in_features=(int(np.sum([np.prod(layer_shapes[i]) for i in range(len(layer_shapes))]))),
+                      out_features=self.num_classes),
             # nn.Sigmoid()
             # nn.ReLU()
             torch.nn.Softmax()
@@ -223,13 +223,13 @@ class Better_Dense(IFBID_Model):
     overfitting.
     """
 
-    def __init__(self, layer_shapes, num_classes=2, batch_size=1):
-        super(Better_Dense, self).__init__(layer_shapes, False, num_classes, batch_size)
+    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1):
+        super(Better_Dense, self).__init__(layer_shapes, use_dense, num_classes, batch_size)
 
         self.blocks = []
         self.block_0 = nn.Sequential(
             # nn.Flatten(),
-            nn.Linear(in_features=(int(batch_size * np.prod(layer_shapes[0]))),
+            nn.Linear(in_features=(int(np.prod(layer_shapes[0]))),
                       out_features=300),
             # nn.Sigmoid()
             nn.ReLU(),
@@ -238,7 +238,7 @@ class Better_Dense(IFBID_Model):
         )
         self.block_1 = nn.Sequential(
             # nn.Flatten(),
-            nn.Linear(in_features=(int(batch_size * np.prod(layer_shapes[1]))),
+            nn.Linear(in_features=(int(np.prod(layer_shapes[1]))),
                       out_features=300),
             # nn.Sigmoid()
             nn.ReLU(),
@@ -247,16 +247,27 @@ class Better_Dense(IFBID_Model):
         )
         self.block_2 = nn.Sequential(
             # nn.Flatten(),
-            nn.Linear(in_features=(int(batch_size * np.prod(layer_shapes[2]))),
+            nn.Linear(in_features=(int(np.prod(layer_shapes[2]))),
                       out_features=300),
             # nn.Sigmoid()
             nn.ReLU(),
             nn.Dropout(p=0.1)
             # torch.nn.Softmax()
         )
+        m2 = 0
+        if use_dense:
+            m2 = 100
+            self.block_3 = nn.Sequential(
+                nn.Linear(in_features=(int(np.prod(layer_shapes[3]))),
+                          out_features=m2),
+                # nn.Sigmoid()
+                nn.ReLU(),
+                nn.Dropout(p=0.1)
+                # torch.nn.Softmax()
+            )
         self.final_dense = nn.Sequential(
             # nn.Linear(in_features=900, out_features=4),
-            nn.Linear(in_features=900, out_features=self.num_classes * batch_size),
+            nn.Linear(in_features=900+m2, out_features=self.num_classes),
             # nn.ReLU()
             torch.nn.Softmax()
         )
@@ -273,6 +284,8 @@ class Better_Dense(IFBID_Model):
         layer_tensor.append(self.block_0(model['layer_0'].flatten()))
         layer_tensor.append(self.block_1(model['layer_1'].flatten()))
         layer_tensor.append(self.block_2(model['layer_2'].flatten()))
+        if self.use_dense_layers:
+            layer_tensor.append(self.block_3(model['layer_3'].flatten()))
         layer_tensor = torch.cat(layer_tensor)
         return self.final_dense(layer_tensor)
 
@@ -317,7 +330,7 @@ class Conv2D_IFBID_Model(IFBID_Model):
             # self.block_4 = self.build_block(4, layer_shapes[4], c=100, d=3, m=m)
 
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m*batch_size + m2, out_features=self.num_classes * batch_size),
+            nn.Linear(in_features=3*m + m2, out_features=self.num_classes),
             # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
@@ -338,14 +351,11 @@ class Conv2D_IFBID_Model(IFBID_Model):
         output_tensor.append(self.block_2(model['layer_2'].squeeze()))
         """
         shape = model['layer_0'].shape
-        output_tensor.append(self.block_0(model['layer_0'].reshape((shape[1] * self.batch_size,
-                                                                    shape[2], shape[3], shape[4]))))
+        output_tensor.append(self.block_0(model['layer_0'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         shape = model['layer_1'].shape
-        output_tensor.append(self.block_1(model['layer_1'].reshape((shape[1] * self.batch_size,
-                                                                    shape[2], shape[3], shape[4]))))
+        output_tensor.append(self.block_1(model['layer_1'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         shape = model['layer_2'].shape
-        output_tensor.append(self.block_2(model['layer_2'].reshape((shape[1] * self.batch_size,
-                                                                    shape[2], shape[3], shape[4]))))
+        output_tensor.append(self.block_2(model['layer_2'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         # BELOW NOT USED FOR BASELINE!
         if self.use_dense_layers:
             output_tensor.append(self.block_3(model['layer_3']))

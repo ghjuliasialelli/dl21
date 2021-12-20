@@ -45,11 +45,11 @@ for layer in m:
 print(shapes)
 
 # Initialise the classifier model for training
-batch_size = 1
+batch_size = 12
 # classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
-# classifier = Dense_IFBID_Model(layer_shapes=shapes, num_classes=2, batch_size=batch_size)
-# classifier = Better_Dense(layer_shapes=shapes, num_classes=2, batch_size=batch_size)
-classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
+classifier = Dense_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
+#classifier = Better_Dense(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
+# classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
 #classifier = Max1D_IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 
 #loss = torch.nn.L1Loss()
