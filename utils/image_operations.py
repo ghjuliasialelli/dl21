@@ -101,3 +101,43 @@ class DigitData_TF:
         self.dataset = self.dataset.batch(BATCH_SIZE)
         """
         return self.dataset
+
+
+class LucasDigitData(TorchDataset):
+    """
+    Usage of the dataset:
+
+    """
+
+    def __init__(self, device, data_files: list, train=True, test=False):
+        """"
+        @:param:    path
+        @:param:    cj_variance contains the color-jitter-variance and corresponding string.
+                    For more, see https://github.com/feidfoe/learning-not-to-learn.
+        @:param:    mode is set to "train","test" or "test_gray".
+        """
+        super().__init__()
+        # Load the colored mnist dataset into memory
+        self.device = device
+
+        self.data = []
+        self.labels = []
+        for file in data_files:
+            np_data = np.load(file, encoding='latin1', allow_pickle=True).item()
+            if train:
+                self.data.append(np_data['train_image'])
+                self.labels.append(np_data['train_label'])
+            if test:
+                self.data.append(np_data['test_image'])
+                self.labels.append(np_data['test_label'])
+
+        self.data = np.concatenate(self.data, axis=0)
+        self.labels = np.concatenate(self.labels, axis=0)
+
+    def __len__(self):
+        # use shape?
+        return len(self.data)
+
+    def __getitem__(self, index):
+        return torch.permute(torch.from_numpy(self.data[index]), (2, 0, 1)).float().to(self.device), \
+               torch.from_numpy(np.array([self.labels[index]])).to(self.device)

@@ -1,3 +1,6 @@
 # Ignore the data
 data/colored_mnist/**
 data/DigitWdb/**
+.idea
+__pycache__
+digitWdb_*.pkl.gz

@@ -3,6 +3,7 @@
 # Description:  This file implements the IFBID Model: a models for inference-free bias detection learning
 #               The paper can be found at https://arxiv.org/abs/2109.04374
 # ------------
+import os.path
 
 import numpy as np
 import torch
@@ -395,6 +396,130 @@ class Conv2D_IFBID_Model(IFBID_Model):
             ])
         )
         return pipeline
+
+
+class Reshaper2(nn.Module):
+
+    def __init__(self, reshape_dim=None, perm_dim=None):
+        super(Reshaper2, self).__init__()
+        self.reshape_dim = reshape_dim
+        self.perm_dim = perm_dim
+
+    def forward(self, x):
+        if x.shape[-1] == 1:
+            x = x.squeeze(-1)
+        if self.reshape_dim is not None:
+            x = x.reshape(self.reshape_dim)
+        if self.perm_dim is not None:
+            x = torch.permute(x, self.perm_dim)
+        return x
+
+
+class Conv2D_IFBID_Model2(nn.Module):
+
+    def __init__(self, layer_shapes, num_classes):
+        super(Conv2D_IFBID_Model2, self).__init__()
+
+        self.num_classes = num_classes
+        self.num_layers = len(layer_shapes)
+
+        n_count = 0
+
+        m = 100
+        m2 = 10
+        n = 100
+        n2 = 10
+        self.block_0 = self.build_block(0, layer_shapes[0], n=n if np.prod(layer_shapes[0][1:]) > 1 else n2,
+                                        m=m if np.prod(layer_shapes[0][1:]) > 1 else m2)
+        n_count += m if np.prod(layer_shapes[0][1:]) > 1 else m2
+        self.block_1 = self.build_block(1, layer_shapes[1], n=n if np.prod(layer_shapes[1][1:]) > 1 else n2,
+                                        m=m if np.prod(layer_shapes[1][1:]) > 1 else m2)
+        n_count += m if np.prod(layer_shapes[1][1:]) > 1 else m2
+        self.block_2 = self.build_block(2, layer_shapes[2], n=n if np.prod(layer_shapes[2][1:]) > 1 else n2,
+                                        m=m if np.prod(layer_shapes[2][1:]) > 1 else m2)
+        n_count += m if np.prod(layer_shapes[2][1:]) > 1 else m2
+        if self.num_layers > 3:
+            self.block_3 = self.build_block(3, layer_shapes[3], n=n if np.prod(layer_shapes[3][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[3][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[3][1:]) > 1 else m2
+            self.block_4 = self.build_block(4, layer_shapes[4], n=n if np.prod(layer_shapes[4][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[4][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[4][1:]) > 1 else m2
+        if self.num_layers > 5:
+            self.block_5 = self.build_block(5, layer_shapes[5], n=n if np.prod(layer_shapes[5][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[5][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[5][1:]) > 1 else m2
+        if self.num_layers > 6:
+            self.block_6 = self.build_block(6, layer_shapes[6], n=n if np.prod(layer_shapes[6][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[6][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[6][1:]) > 1 else m2
+            self.block_7 = self.build_block(7, layer_shapes[7], n=n if np.prod(layer_shapes[7][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[7][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[7][1:]) > 1 else m2
+            self.block_8 = self.build_block(8, layer_shapes[8], n=n if np.prod(layer_shapes[8][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[8][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[8][1:]) > 1 else m2
+            self.block_9 = self.build_block(9, layer_shapes[9], n=n if np.prod(layer_shapes[9][1:]) > 1 else n2,
+                                            m=m if np.prod(layer_shapes[9][1:]) > 1 else m2)
+            n_count += m if np.prod(layer_shapes[9][1:]) > 1 else m2
+
+        self.final_dense = nn.Sequential(
+            nn.Linear(in_features=n_count, out_features=self.num_classes),
+            torch.nn.Softmax(dim=1)
+        )
+
+    def forward(self, model):
+        """
+        Input to the ifbid-model is a model.
+        Shape of weights should be something like: (Layers, Weight-shape at Layer i)
+        """
+
+        # Build a flattened tensor of all layers.
+        output_tensor = []
+
+        output_tensor.append(self.block_0(model['layer_0']))
+        output_tensor.append(self.block_1(model['layer_1']))
+        output_tensor.append(self.block_2(model['layer_2']))
+        if self.num_layers > 3:
+            output_tensor.append(self.block_3(model['layer_3']))
+            output_tensor.append(self.block_4(model['layer_4']))
+        if self.num_layers > 5:
+            output_tensor.append(self.block_5(model['layer_5']))
+        if self.num_layers > 6:
+            output_tensor.append(self.block_6(model['layer_6']))
+            output_tensor.append(self.block_7(model['layer_7']))
+            output_tensor.append(self.block_8(model['layer_8']))
+            output_tensor.append(self.block_9(model['layer_9']))
+
+        output_tensor = torch.cat(output_tensor, dim=1)
+        # print(output_tensor.shape)
+        return self.final_dense(output_tensor)
+
+    def build_block(self, i, layer_shapes, n, m):
+        layers = []
+        layer_1 = nn.Conv2d(in_channels=layer_shapes[1], out_channels=n, kernel_size=(1, 1))
+        layers.extend([('Reshape1', Reshaper2(reshape_dim=(-1, *layer_shapes[1:]))),
+                       ('Layer1', layer_1), ('Activation_1', nn.ReLU())])
+        if layer_shapes[2] > 1:
+            layer_2 = nn.MaxPool2d(kernel_size=(layer_shapes[2], layer_shapes[3]))
+            layers.append(('Layer2', layer_2))
+        layers.append(('Flatten', nn.Flatten(start_dim=2)))
+        layer_3 = nn.Conv1d(in_channels=n, out_channels=m, kernel_size=1)
+        layers.extend([('Layer3', layer_3), ('Activation_2', nn.ReLU())])
+        layer_4 = nn.MaxPool1d(layer_shapes[0])
+        layers.extend([('Reshape2', Reshaper2(reshape_dim=(-1, layer_shapes[0], m), perm_dim=(0, 2, 1))),
+                       ('Layer4', layer_4), ('Reshape3', Reshaper2())])
+
+        #print(layer_shapes)
+        pipeline = nn.Sequential(OrderedDict(layers))
+        return pipeline
+
+    def save_network(self, path, filename):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        save_filename = f'{filename}.pth'
+        torch.save(self.state_dict(), os.path.join(path, save_filename))
+
 
 
 class Max1D_IFBID_Model(IFBID_Model):
