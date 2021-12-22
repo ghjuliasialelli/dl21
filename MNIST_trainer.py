@@ -56,12 +56,15 @@ parser.add_argument('--epochs', type=int, default=1,
 parser.add_argument('--debug', action='store_true',
                     help='set --debug flag for lower computational impact.')
 parser.add_argument('path', type=str, default='./',
-                    help='path to the model data.')
+                    help='path to the MNIST data.')
+parser.add_argument('save_path', type=str, default='./',
+                    help='path to save the trained model data.')
 args = parser.parse_args()
 
 IMAGES_PATH = args.path
+SVAE_PATH = args.save_path
 #IMAGES_PATH = '/home/phil/Documents/Studium/DL/Project/colored_mnist/'
-SVAE_PATH = '/home/phil/Documents/Studium/DL/Project/generalization_dataset/'
+#SVAE_PATH = '/home/phil/Documents/Studium/DL/Project/generalization_dataset/'
 batch_size = 12
 os.makedirs(SVAE_PATH, exist_ok=True)
 
