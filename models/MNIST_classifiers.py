@@ -1,5 +1,11 @@
+# Torch Imports:
 import torch
 from torch.nn import Module, Conv2d, MaxPool2d, Flatten, ReLU, Softmax, Linear, Dropout
+
+# TF Imports:
+from tensorflow.keras.applications import * #Efficient Net included here
+from tensorflow.keras import models
+from tensorflow.keras import layers
 
 
 class MNISTClassifier(Module):
@@ -44,40 +50,19 @@ class MNISTClassifier(Module):
         state_dict['dense2.bias'] = weights['layer_9'][0, :, 0, 0, 0]
         self.load_state_dict(state_dict, strict=True)
 
-"""
-from tensorflow.keras.applications import * #Efficient Net included here
-from tensorflow.keras import models
-from tensorflow.keras import layers
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import os
-import shutil
-import pandas as pd
-from sklearn import model_selection
-from tqdm import tqdm
-from tensorflow.keras import optimizers
-import tensorflow as tf
 
-#input_shape is (height, width, number of channels) for images
-# include_top=False allows us to easily change the final layer to our custom dataset.
-input_shape = (32, 32, 3)
-conv_base = EfficientNetB0(weights="imagenet", include_top=False, input_shape=input_shape)
+class EfficientNet_MNIST_Classifier():
+    """New MNIST-classifier to test impact of bias on dense layer at end."""
 
-# Prepare Model:
-model = models.Sequential()
-model.add(conv_base)
-model.add(layers.GlobalMaxPooling2D(name="gap"))
+    def __init__(self, input_shape=(32, 32, 3), NUMBER_OF_CLASSES=10):
+        conv_base = EfficientNetB0(weights="imagenet", include_top=False, input_shape=input_shape)
+        # rescale_layer = tf.keras.layers.Rescaling(1./255, offset=0.0)
+        self.model = models.Sequential()
+        # self.model.add(rescale_layer)
+        self.model.add(conv_base)
+        self.model.add(layers.GlobalMaxPooling2D(name="gap"))
 
-#avoid overfitting
-#model.add(layers.Dropout(dropout_rate=0.2, name="dropout_out"))
-
-# Set NUMBER_OF_CLASSES = 10 for MNIST-classification.
-NUMBER_OF_CLASSES = 10
-model.add(layers.Dense(NUMBER_OF_CLASSES, activation="softmax", name="fc_out"))
-conv_base.trainable = False
-
-print(model.summary())
-
-ws = model.get_weights()
-print(ws[len(model.get_weights())-2].shape)
-# Hypothesis: Biased training will lead to bias effecting the dense layer, which for the EfficientNet is:
-"""
+        # avoid overfitting
+        # self.model.add(layers.Dropout(dropout_rate=0.2, name="dropout_out"))
+        self.model.add(layers.Dense(NUMBER_OF_CLASSES, activation="softmax", name="fc_out"))
+        conv_base.trainable = False
