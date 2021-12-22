@@ -200,6 +200,9 @@ def main():
 
 
 def computeAbsoluteChangesInSample(data,new_data):
+    """
+    computes absolut weight change per neuron for every sample
+    """
     changesPerLayer = {}
     for layer in data['model_weights']:
         assert(np.shape(data['model_weights'][layer]) == np.shape(new_data['model_weights'][layer]))
@@ -210,6 +213,10 @@ def computeAbsoluteChangesInSample(data,new_data):
     return changesPerLayer
 
 def visualizeChangeInSample(changesPerLayer,sampleNumber):
+    """
+    plots absolut weight change per layer for every sample
+    """
+    # transform data to plot
     results = pd.DataFrame()
     for layer in changesPerLayer:
         absoluteChange = changesPerLayer[layer]
@@ -225,7 +232,10 @@ def visualizeChangeInSample(changesPerLayer,sampleNumber):
     fig.get_figure().savefig("ablationPlots/changesPerLayer"+str(sampleNumber)+".jpg")
 
 def visualizeChanges(changesPerSample):
-    # init dict
+    """
+    plots mean of mean change per sampled layer and mean of mean change per sampled neuron (both on layer level)
+    """
+    # transform data to plot
     dictionary = {}
     sample = changesPerSample[0]
     for layer in sample:
@@ -239,8 +249,6 @@ def visualizeChanges(changesPerSample):
 
     results = pd.DataFrame()
     for layer in dictionary.keys():
-        #print(layer+": layer mean of mean per sampled layer:", np.mean(np.mean(dictionary[layer], axis=1)))
-        #print(layer+": layer mean of mean per sampled neuron:", np.mean(np.mean(dictionary[layer], axis=0)))
         results = results.append({
             'layer': layer,
             'mean of mean per sampled layer':np.mean(np.mean(dictionary[layer], axis=1)),

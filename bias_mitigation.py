@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 import json
+import pandas as pd
 
 
 # DATASETS
@@ -186,6 +187,52 @@ def main():
         print(f'Sample {iter}:')
         print(f'Accuracy: {ab:.5} ---> {aa:.5}')
         print(f'Prediction: {list(np.around(pb, decimals=5))} ---> {list(np.around(pa, decimals=5))}')
+
+    plotMetrics(metrics_before,metrics_after)
+
+def plotMetrics(metrics_before,metrics_after):
+    """
+    plot accuracy before mitigation and after mitigation, plots also mean prediction before and after mitigation
+    """
+    assert(metrics_before.keys() == metrics_after.keys())
+
+    # plot predictions change
+    pred_before_l = metrics_before['prediction']
+    pred_after_l = metrics_after['prediction']
+    pred_before = np.reshape(pred_before_l[0], (1,len(pred_before_l[0])))
+    pred_after = np.reshape(pred_after_l[0], (1,len(pred_after_l[0])))
+    for i in range(1,len(pred_before_l)):
+        pred_before = np.append(pred_before, np.reshape(pred_before_l[i], (1,len(pred_before_l[i]))), axis=0)
+        pred_after = np.append(pred_after, np.reshape(pred_after_l[i], (1,len(pred_after_l[i]))), axis=0)
+    predictions = pd.DataFrame()
+    classes = ['0.02','0.03','0.04','0.05']
+    for i in range(0,len(classes)):
+        predictions = predictions.append(
+            {
+                'category':classes[i],
+                'before': np.mean(pred_before[:,i]),
+                'after':np.mean(pred_after[:,i])
+            }, ignore_index=True
+        )
+    predictions = predictions.set_index('category')
+    fig = predictions.plot(kind="bar", title="prediction mean before and after mitigation", figsize=(10,10))
+    fig.get_figure().savefig("plots/predictionAfterMitigation.jpg")
+
+    # plot accuracy change 
+    accuracy = pd.DataFrame()
+    accuracy = accuracy.append({
+            'accuracy': "before",
+            'mean': np.mean(metrics_before["unbiased_accuracy"])
+            },
+            ignore_index=True)
+    accuracy = accuracy.append({
+            'accuracy': "after",
+            'mean': np.mean(metrics_after['unbiased_accuracy'])
+            },
+            ignore_index=True)
+    accuracy = accuracy.set_index('accuracy')
+    fig = accuracy.plot(kind="bar", title="accuracy mean before and after mitigation", figsize=(10,10))
+    fig.get_figure().savefig("plots/accuracyAfterMitigation.jpg")
 
 
 if __name__ == '__main__':
