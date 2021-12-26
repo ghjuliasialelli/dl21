@@ -3,9 +3,13 @@ import torch
 from torch.nn import Module, Conv2d, MaxPool2d, Flatten, ReLU, Softmax, Linear, Dropout
 
 # TF Imports:
-from tensorflow.keras.applications import * #Efficient Net included here
-from tensorflow.keras import models
-from tensorflow.keras import layers
+#from tensorflow.keras.applications import * #Efficient Net included here
+from keras.applications import * #Efficient Net included here
+# from tensorflow.keras import models
+from keras import models, layers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Flatten
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
 
 
 class MNISTClassifier(Module):
@@ -65,4 +69,44 @@ class EfficientNet_MNIST_Classifier():
         # avoid overfitting
         # self.model.add(layers.Dropout(dropout_rate=0.2, name="dropout_out"))
         self.model.add(layers.Dense(NUMBER_OF_CLASSES, activation="softmax", name="fc_out"))
-        conv_base.trainable = False
+        conv_base.trainable = True # Trainable of efficientNet is false to allow faster training, but leads to lower
+        # accuracy!
+
+
+class ResNet50_MNIST_Classifier():
+
+    def __init__(self, input_shape=(32, 32, 3), NUMBER_OF_CLASSES=10):
+        conv_base = ResNet50(weights="imagenet", include_top=False, input_shape=input_shape)
+        # rescale_layer = tf.keras.layers.Rescaling(1./255, offset=0.0)
+        self.model = models.Sequential()
+        # self.model.add(rescale_layer)
+        self.model.add(conv_base)
+        self.model.add(layers.GlobalMaxPooling2D(name="gap"))
+
+        # avoid overfitting
+        # self.model.add(layers.Dropout(dropout_rate=0.2, name="dropout_out"))
+        self.model.add(layers.Dense(NUMBER_OF_CLASSES, activation="softmax", name="fc_out"))
+        conv_base.trainable = False  # Trainable of efficientNet is false to allow faster training, but leads to lower
+        # accuracy!
+
+
+class Simple_MNIST_Classifier():
+
+    def __init__(self):
+        self.model = Sequential()
+        # self.model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(28, 28, 3)))
+        self.model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(32, 32, 3)))
+        self.model.add(MaxPooling2D())
+
+        self.model.add(Conv2D(48, kernel_size=3, activation='relu'))
+        self.model.add(MaxPooling2D())
+
+        self.model.add(Conv2D(64, kernel_size=3, activation='relu'))
+        self.model.add(MaxPooling2D())
+
+        self.model.add(Flatten())
+        self.model.add(Dense(3163, activation='relu'))
+        self.model.add(Dense(128, activation='relu'))
+        self.model.add(Dropout(0.3))
+        self.model.add(Dense(10, activation='softmax'))
+        # self.model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
