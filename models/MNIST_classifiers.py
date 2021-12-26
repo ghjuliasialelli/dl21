@@ -1,6 +1,6 @@
 # Torch Imports:
 import torch
-from torch.nn import Module, Conv2d, MaxPool2d, Flatten, ReLU, Softmax, Linear, Dropout
+from torch import nn
 
 # TF Imports:
 #from tensorflow.keras.applications import * #Efficient Net included here
@@ -12,20 +12,20 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 
 
-class MNISTClassifier(Module):
+class MNISTClassifier(nn.Module):
     def __init__(self):
         super(MNISTClassifier, self).__init__()
 
-        self.relu = ReLU()
-        self.softmax = Softmax(dim=1)
-        self.maxpool = MaxPool2d(kernel_size=(2, 2))
-        self.conv1 = Conv2d(3, 24, kernel_size=(5, 5))
-        self.conv2 = Conv2d(24, 48, kernel_size=(3, 3))
-        self.conv3 = Conv2d(48, 64, kernel_size=(3, 3))
-        self.flatten = Flatten()
-        self.dense1 = Linear(64, 128)
-        self.dropout = Dropout(0.3)
-        self.dense2 = Linear(128, 10)
+        self.relu = nn.ReLU()
+        self.softmax = nn.Softmax(dim=1)
+        self.maxpool = nn.MaxPool2d(kernel_size=(2, 2))
+        self.conv1 = nn.Conv2d(3, 24, kernel_size=(5, 5))
+        self.conv2 = nn.Conv2d(24, 48, kernel_size=(3, 3))
+        self.conv3 = nn.Conv2d(48, 64, kernel_size=(3, 3))
+        self.flatten = nn.Flatten()
+        self.dense1 = nn.Linear(64, 128)
+        self.dropout = nn.Dropout(0.3)
+        self.dense2 = nn.Linear(128, 10)
 
     def forward(self, x):
         x = self.relu(self.conv1(x))
