@@ -8,7 +8,7 @@ import h5py
 import os
 import sys
 
-from torch.utils.data import IterableDataset, Dataset
+from torch.utils.data import IterableDataset, Dataset, random_split, ConcatDataset
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
@@ -21,6 +21,14 @@ import pandas as pd
 
 # For conversion from tensorflow to pytorch, see:
 # https://github.com/Cadene/tensorflow-model-zoo.torch/blob/master/inceptionv4/pytorch_load.py
+
+
+def balance_datasets(train_data: Dataset, test_data: Dataset, split: [float]):
+    """Split order: [fraction going to the train set, fraction going to the test set]"""
+    train_split = random_split(train_data, split)
+    test_split = random_split(test_data, split)
+    return ConcatDataset([train_split[0], test_split[0]]), ConcatDataset([train_split[1], test_split[1]])
+
 
 class ModelDataset(Dataset):
 
@@ -105,12 +113,16 @@ class PhilipsModelDataset(ModelDataset):
         self.data_directory = data_directory
         # set the number of classes: 4 or 2
         self.num_classes = num_classes#4    # or =2
+        self.sublength = None
+
+        self.standardize = True
 
     def __len__(self):
         # lenths of the subdirectories are 2000
         length = 0
         for directory in os.listdir(self.data_directory):
             length = length + len(os.listdir(os.path.join(self.data_directory, directory)))
+            self.sublength = len(os.listdir(os.path.join(self.data_directory, directory)))
         return length
 
     def load_model_k(self, bias: str, model_number: int):
@@ -119,8 +131,8 @@ class PhilipsModelDataset(ModelDataset):
         return model
 
     def __getitem__(self, index):
-        dir_index = index // 2000
-        model_number = index % 2000
+        dir_index = index // self.sublength
+        model_number = index % self.sublength
         biases = ['0.02', '0.03', '0.04', '0.05']
         model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
 
@@ -131,6 +143,10 @@ class PhilipsModelDataset(ModelDataset):
             if layer.__class__.__name__ == 'Conv2D':
                 weights = layer.get_weights()[0]
                 ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                if self.standardize:
+                    mean = ws.mean(dim=1, keepdim=True)
+                    sd = ws.std(dim=1, keepdim=True)
+                    ws = (ws - mean) / sd
                 return_dict[f'layer_{i}'] = ws
                 i = i + 1
             elif layer.__class__.__name__ == 'Dense':
