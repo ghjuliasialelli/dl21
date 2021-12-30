@@ -23,10 +23,10 @@ import pandas as pd
 # https://github.com/Cadene/tensorflow-model-zoo.torch/blob/master/inceptionv4/pytorch_load.py
 
 
-def balance_datasets(train_data: Dataset, test_data: Dataset, split: [float]):
-    """Split order: [fraction going to the train set, fraction going to the test set]"""
-    train_split = random_split(train_data, split)
-    test_split = random_split(test_data, split)
+def balance_datasets(train_data: Dataset, test_data: Dataset, split1: [int], split2: [int]):
+    """Split order: [num_elements going to the train set, num_elements going to the test set]"""
+    train_split = random_split(train_data, split1)
+    test_split = random_split(test_data, split2)
     return ConcatDataset([train_split[0], test_split[0]]), ConcatDataset([train_split[1], test_split[1]])
 
 
