@@ -272,143 +272,146 @@ class Model(nn.Module):
         
         return torch.reshape(x, shape = (x.size()[0],x.size()[2]))
 
-save_path += 'latest_reshuffled_30_epochs_lstm0_lstm2_dense_sm/'
-os.mkdir(save_path)
 
 ###########################################################################################
 # Execution ###############################################################################
 ###########################################################################################
 
-##### Loading the data ####################################################################
+if __name__ == "__main__" :
 
-if VERBOSE : print('Loading weights...')
-trainModelWeights, testModelWeights = loadModelWeights()
+    save_path += 'lstm4_dense2/'
+    os.mkdir(save_path)
 
-if PCA_cond :
-    if VERBOSE : print('Extract PCA...') 
-    pca_train_weights, pca_test_weights = apply_PCA(trainModelWeights, testModelWeights)
-    PCA_trainModelWeights = get_PCA_ModelWeights(trainModelWeights, pca_train_weights)
-    PCA_testModelWeights = get_PCA_ModelWeights(testModelWeights, pca_test_weights)
+    ##### Loading the data ####################################################################
 
-if VERBOSE : print('Split data...')
-if PCA_cond : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(PCA_trainModelWeights, PCA_testModelWeights, feature='pca_weights')
-else : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(trainModelWeights, testModelWeights, feature='weights')
+    if VERBOSE : print('Loading weights...')
+    trainModelWeights, testModelWeights = loadModelWeights()
 
-# Sanity checks : 
-if VERBOSE : 
-    print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
-    print(np.mean(X_train), np.mean(X_val), np.mean(X_test))
-    print(np.std(X_train), np.std(X_val), np.std(X_test))
+    if PCA_cond :
+        if VERBOSE : print('Extract PCA...') 
+        pca_train_weights, pca_test_weights = apply_PCA(trainModelWeights, testModelWeights)
+        PCA_trainModelWeights = get_PCA_ModelWeights(trainModelWeights, pca_train_weights)
+        PCA_testModelWeights = get_PCA_ModelWeights(testModelWeights, pca_test_weights)
 
-##### Training the model ###################################################################
+    if VERBOSE : print('Split data...')
+    if PCA_cond : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(PCA_trainModelWeights, PCA_testModelWeights, feature='pca_weights')
+    else : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(trainModelWeights, testModelWeights, feature='weights')
 
-model = Model()
+    # Sanity checks : 
+    if VERBOSE : 
+        print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
+        print(np.mean(X_train), np.mean(X_val), np.mean(X_test))
+        print(np.std(X_train), np.std(X_val), np.std(X_test))
 
-criterion = CrossEntropyLoss(reduction='mean')
-optimizer = optim.Adam(model.parameters(), lr = 0.01)
-BATCH_SIZE = 16
-NUM_EPOCHS = 30
+    ##### Training the model ###################################################################
+
+    model = Model()
+
+    criterion = CrossEntropyLoss(reduction='mean')
+    optimizer = optim.Adam(model.parameters(), lr = 0.01)
+    BATCH_SIZE = 16
+    NUM_EPOCHS = 10
 
 
-best_loss = 10000000.0
-losses = []
-accuracy = []
-val_losses = []
-val_accuracy = []
+    best_loss = 10000000.0
+    losses = []
+    accuracy = []
+    val_losses = []
+    val_accuracy = []
 
-for epoch in range(NUM_EPOCHS):
-    if VERBOSE : print('Epoch : ', epoch+1)
+    for epoch in range(NUM_EPOCHS):
+        if VERBOSE : print('Epoch : ', epoch+1)
 
-    epoch_loss = []
-    epoch_accuracies = []
+        epoch_loss = []
+        epoch_accuracies = []
 
-    epoch_val_loss = []
-    epoch_val_accuracies = []
+        epoch_val_loss = []
+        epoch_val_accuracies = []
 
-    for data in batcher(X_train, y_train, batch_size = BATCH_SIZE) :
+        for data in batcher(X_train, y_train, batch_size = BATCH_SIZE) :
+            
+            # pass through model
+            inputs, labels = data
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            
+            # backprop
+            loss = criterion(outputs, labels)
+            loss.backward() 
+            optimizer.step()
+            epoch_loss.append(loss.item())
+
+            # get training accuracy
+            y_true = [lab.argmax() for lab in labels]
+            y_pred = [pred.argmax() for pred in outputs]
+            epoch_accuracies.append(accuracy_score(y_true, y_pred))
+
+        losses.append(np.mean(epoch_loss))
+        accuracy.append(np.mean(epoch_accuracies))
+
+        # Validation accuracies and losses
+        for data in batcher(X_val, y_val, batch_size=y_val.shape[0]) :
+            inputs, labels = data
+            outputs = model(inputs)
+
+            # test loss
+            loss = criterion(outputs, labels)
+            val_loss = loss.item()
+            epoch_val_loss.append(val_loss)
+
+            # validation accuracy
+            y_true = [lab.argmax() for lab in labels]
+            y_pred = [pred.argmax() for pred in outputs]
+            val_acc = accuracy_score(y_true, y_pred)
+            epoch_val_accuracies.append(val_acc)
         
-        # pass through model
+        val_losses.append(np.mean(epoch_val_loss))
+        val_accuracy.append(np.mean(epoch_val_accuracies))
+
+        is_best = val_loss < best_loss
+        best_loss = min(val_loss, best_loss)
+        fn = save_path + 'model.pth.tar'
+        if is_best :
+            fn = save_path + 'best_model.pth.tar'
+            if VERBOSE : print('Saving new best model') 
+        state = {'epoch' : epoch + 1, 'state_dict' : model.state_dict(), 'best_loss' : best_loss, 'optimizer' : optimizer.state_dict()}
+        torch.save(state, fn)
+
+
+    plt.plot(list(range(len(losses))), losses, label = 'Training')
+    plt.plot(list(range(len(losses))), val_losses, label = 'Validation')
+    plt.title('Loss')
+    plt.legend()
+    plt.savefig(save_path + 'loss.png')
+    plt.show()
+
+    """
+    plt.plot(list(range(len(accuracy))), accuracy, label = 'Training')
+    plt.plot(list(range(len(accuracy))), val_accuracy, label = 'Validation')
+    plt.title('Accuracy')
+    plt.legend()
+    plt.savefig(save_path + 'accuracy.png')
+    plt.show()
+    """
+
+    ##### Testing time #########################################################################
+
+    best_model = torch.load(save_path + 'best_model.pth.tar')
+
+    for data in batcher(X_test, y_test, batch_size=y_test.shape[0]) :
         inputs, labels = data
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        
-        # backprop
-        loss = criterion(outputs, labels)
-        loss.backward() 
-        optimizer.step()
-        epoch_loss.append(loss.item())
-
-        # get training accuracy
-        y_true = [lab.argmax() for lab in labels]
-        y_pred = [pred.argmax() for pred in outputs]
-        epoch_accuracies.append(accuracy_score(y_true, y_pred))
-
-    losses.append(np.mean(epoch_loss))
-    accuracy.append(np.mean(epoch_accuracies))
-
-    # Validation accuracies and losses
-    for data in batcher(X_val, y_val, batch_size=y_val.shape[0]) :
-        inputs, labels = data
-        outputs = model(inputs)
+        outputs = best_model(inputs)
 
         # test loss
         loss = criterion(outputs, labels)
-        val_loss = loss.item()
-        epoch_val_loss.append(val_loss)
 
-        # validation accuracy
+        # test accuracy
         y_true = [lab.argmax() for lab in labels]
         y_pred = [pred.argmax() for pred in outputs]
-        val_acc = accuracy_score(y_true, y_pred)
-        epoch_val_accuracies.append(val_acc)
-    
-    val_losses.append(np.mean(epoch_val_loss))
-    val_accuracy.append(np.mean(epoch_val_accuracies))
+        test_accuracy = accuracy_score(y_true, y_pred)
 
-    is_best = val_loss < best_loss
-    best_loss = min(val_loss, best_loss)
-    fn = save_path + 'model.pth.tar'
-    if is_best :
-        fn = save_path + 'best_model.pth.tar'
-        if VERBOSE : print('Saving new best model') 
-    state = {'epoch' : epoch + 1, 'state_dict' : model.state_dict(), 'best_loss' : best_loss, 'optimizer' : optimizer.state_dict()}
-    torch.save(state, fn)
-
-
-plt.plot(list(range(len(losses))), losses, label = 'Training')
-plt.plot(list(range(len(losses))), val_losses, label = 'Validation')
-plt.title('Loss')
-plt.legend()
-plt.savefig(save_path + 'loss.png')
-plt.show()
-
-"""
-plt.plot(list(range(len(accuracy))), accuracy, label = 'Training')
-plt.plot(list(range(len(accuracy))), val_accuracy, label = 'Validation')
-plt.title('Accuracy')
-plt.legend()
-plt.savefig(save_path + 'accuracy.png')
-plt.show()
-"""
-
-##### Testing time #########################################################################
-
-best_model = torch.load(save_path + 'best_model.pth.tar')
-
-for data in batcher(X_test, y_test, batch_size=y_test.shape[0]) :
-    inputs, labels = data
-    outputs = best_model(inputs)
-
-    # test loss
-    loss = criterion(outputs, labels)
-
-    # test accuracy
-    y_true = [lab.argmax() for lab in labels]
-    y_pred = [pred.argmax() for pred in outputs]
-    test_accuracy = accuracy_score(y_true, y_pred)
-
-if VERBOSE : 
-    print()
-    print('save path : ', save_path)
-    print('Test loss : ', loss.item())
-    print('Test accuracy : ', test_accuracy)
+    if VERBOSE : 
+        print()
+        print('save path : ', save_path)
+        print('Test loss : ', loss.item())
+        print('Test accuracy : ', test_accuracy)
