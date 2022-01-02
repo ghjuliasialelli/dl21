@@ -1,10 +1,10 @@
 # ------------
 # Author:       Philip Toma
 # Description:  This file trains an arbitrary MNIST-classifier architecture (written in tensorflow).
-# Usage:        python3 MNIST_trainer.py --epochs num_epochs path_to_colored_MNIST
+# Usage:        python3 MNIST_trainer.py --epochs num_epochs --num_models num_models path_to_colored_MNIST save_path
 # Data:         https://github.com/feidfoe/learning-not-to-learn/tree/master/dataset/colored_mnist
 # ------------
-
+# /cluster/home/tomap/dl21/data
 
 from models.MNIST_classifiers import *
 

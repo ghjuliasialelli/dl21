@@ -32,7 +32,7 @@ class Max_Val(nn.Module):
 
 class ModelWrapper(pl.LightningModule):
 
-    def __init__(self, model_architecture, learning_rate, loss, dataset=None, dataset_distr=None,
+    def __init__(self, model_architecture, learning_rate, loss, dataset=None, dataset_distr=None, test_dataset=None,
                  batch_size=1):
         super(ModelWrapper, self).__init__()
         self._model = model_architecture
@@ -41,6 +41,7 @@ class ModelWrapper(pl.LightningModule):
         if dataset is not None:
             self.dataset_split = random_split(dataset, dataset_distr)
         self.batch_size = batch_size
+        self.test_dataset = test_dataset
 
         self.transform = Max_Val()
 
@@ -68,7 +69,7 @@ class ModelWrapper(pl.LightningModule):
             y_hat = self._model(x)
             # losses.append(self.loss(y_hat.float(), y.float()))
         #y_hat = self._model(x)
-        print(f'y: {y}\ny_hat: {y_hat}')
+        #print(f'y: {y}\ny_hat: {y_hat}')
 
         return self.loss(y_hat.float(), y.float())
         # return statistics.mean(losses)
@@ -145,6 +146,7 @@ class ModelWrapper(pl.LightningModule):
     def on_test_end(self):
         print(f'correct: {self.test_accuracy}, total: {self.test_size}\nAccuracy: '
               f'{1.0*self.test_accuracy / self.test_size}')
+        self._model.test_accuracy = 1.0*self.test_accuracy / self.test_size
         return {"Test Accuracy": 1.0*self.test_accuracy / self.test_size}
 
     def train_dataloader(self):
@@ -155,7 +157,7 @@ class ModelWrapper(pl.LightningModule):
         return DataLoader(self.dataset_split[1], batch_size=self.batch_size)
 
     def test_dataloader(self):
-        return DataLoader(self.dataset_split[2], batch_size=self.batch_size)
+        return DataLoader(self.test_dataset, batch_size=self.batch_size)
 
 
 class MNIST_Classifier_Wrapper(pl.LightningModule):

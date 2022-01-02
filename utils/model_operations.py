@@ -108,14 +108,14 @@ class ModelDataset(Dataset):
 
 class PhilipsModelDataset(ModelDataset):
 
-    def __init__(self, bias: str, data_directory: str, num_classes):
+    def __init__(self, bias: str, data_directory: str, num_classes, standardize=False):
         super(PhilipsModelDataset, self).__init__(bias, data_directory)
         self.data_directory = data_directory
         # set the number of classes: 4 or 2
         self.num_classes = num_classes#4    # or =2
         self.sublength = None
 
-        self.standardize = True
+        self.standardize = standardize
 
     def __len__(self):
         # lenths of the subdirectories are 2000
@@ -231,22 +231,3 @@ class LucasModelDataset(Dataset):
         sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros).float().to(self.device)}
         # print(f'Sample: {sample["bias"]}')
         return sample
-
-
-class Loading_Dataset(Dataset):
-
-    def __init__(self, biases, datasets):
-        super(Loading_Dataset, self).__init__()
-        self.data = datasets
-        self.lengths = []
-        for dataset in datasets:
-            self.lengths.append(len(dataset))
-        self.biases = biases
-
-    def __len__(self):
-        pass
-
-    def __getitem__(self, index):
-        for i in range(len(self.lengths)):
-            if index - self.lengths[0] < 0:
-                return self.data[i][index] #, biases[i]

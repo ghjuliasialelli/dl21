@@ -66,7 +66,12 @@ def build_umap(percentage):
     # u = fit.fit_transform(arr2d)
     u = fit.fit_transform(X_new)
     print(u.shape)
-    plt.scatter(u[:, 0], u[:, 1], c=c_vals)
+
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(u[:, 0], u[:, 1], c=c_vals, marker="^")
+    legend1 = ax.legend(*scatter.legend_elements(),
+                        loc="lower left", title="Classes")
+    ax.add_artist(legend1)
     plt.xlabel("UMAP1")
     plt.ylabel("UMAP2")
     plt.title("Visualizing the Relation of Model Weights and Model Bias")
@@ -74,6 +79,6 @@ def build_umap(percentage):
 
 
 # percentage = 0.1 -> 10%, 0.01 -> 1% of the models used; 1 -> 100% of the models used.
-# percentage = 0.1
-percentage = 1.0
+percentage = 0.01
+# percentage = 1.0
 build_umap(percentage=int(1/percentage))
