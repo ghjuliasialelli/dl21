@@ -21,7 +21,7 @@ random_features = False
 # Whether to apply PCA feature extraction
 PCA_cond = False
 # Whether to reshuffle the data, as described in the report
-reshuffled = False
+reshuffled = True
 # Whether to print informative messages 
 VERBOSE = True
 
@@ -263,14 +263,16 @@ class Model(nn.Module):
         #       L = sequence length
         #       H_in = input size
         # -> (batch_size, 5, num_features)
-        
-        x, (hidden, _) = self.lstm4(x)
+
+        x, _ = self.lstm0(x)        
+        x, (hidden, _) = self.lstm2(x)
         hidden = torch.reshape(hidden, shape = (hidden.size()[1], hidden.size()[0], hidden.size()[2]))
-        x = self.dense2(hidden)
+        x = self.dense(hidden)
+        x = self.sm(x)
         
         return torch.reshape(x, shape = (x.size()[0],x.size()[2]))
 
-save_path += 'lstm4_dense2/'
+save_path += 'latest_reshuffled_30_epochs_lstm0_lstm2_dense_sm/'
 os.mkdir(save_path)
 
 ###########################################################################################
@@ -305,7 +307,7 @@ model = Model()
 criterion = CrossEntropyLoss(reduction='mean')
 optimizer = optim.Adam(model.parameters(), lr = 0.01)
 BATCH_SIZE = 16
-NUM_EPOCHS = 10
+NUM_EPOCHS = 30
 
 
 best_loss = 10000000.0
