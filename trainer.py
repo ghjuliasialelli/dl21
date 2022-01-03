@@ -54,8 +54,7 @@ batch_size = 2
 # classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 # classifier = Dense_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
 # classifier = Better_Dense(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
-classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=False, num_classes=4, batch_size=batch_size)
-#classifier = Max1D_IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
+classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
 
 # Initialize training-loss
 loss = torch.nn.BCELoss()
@@ -76,19 +75,20 @@ if args.debug:
 data, test_data = balance_datasets(train_data=data, test_data=test_data,
                                    split1=[int(0.7*len(data)), int(0.3*len(data))],
                                    split2=[int(0.7*len(test_data)), int(0.3*len(test_data))])
+
 print("Sizes after Balancing")
 print(f'Train-Data of length: {len(data)}, Test-Data of length {len(test_data)}')
 print(f'{int(0.7*len(data))+int(0.3*len(data))}')
+
 # Initialise pl model and trainer
 lightning_model = ModelWrapper(model_architecture=classifier, learning_rate=1e-3, loss=loss, dataset=data,
                                dataset_distr=[int(0.7*len(data)), ceil(len(data) - 0.7*len(data))], test_dataset=test_data,
                                batch_size=batch_size)
-# print(lightning_model.forward(m))
 
 trainer = pl.Trainer(max_epochs=args.epochs, deterministic=True) #, reload_dataloaders_every_n_epochs=2)
 
 # Train
-trainer.fit(lightning_model) #, [train_loader, val_dataloader])
+trainer.fit(lightning_model)
 
 # Test the model.
 
@@ -97,7 +97,7 @@ trainer.test(lightning_model)
 
 test_accuracy = lightning_model._model.test_accuracy
 
-with open(os.path.join(args.path, f'ifbid-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
+with open(os.path.join(args.path, f'ifbid+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=' ')
     writer.writerow([test_accuracy])
 
@@ -105,5 +105,5 @@ if not args.debug:
     os.makedirs(os.path.join(args.path, 'bias_classifiers'), exist_ok=True)
     torch.save(lightning_model._model.state_dict(),
                os.path.join(args.path, 'bias_classifiers',
-                            f'ifbid-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
+                            f'ifbid+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
                )

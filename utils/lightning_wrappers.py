@@ -119,7 +119,7 @@ class ModelWrapper(pl.LightningModule):
             y = batch['bias'][i]
             x = new_list[i]
             y_hat = self._model(x)
-            print(f'y: {y}\ny_hat: {y_hat}')
+            # print(f'y: {y}\ny_hat: {y_hat}')
             loss = self.loss(y_hat.float(), y.float())
             # losses.append(self.loss(y_hat.float(), y.float()))
             y_hat = self.transform.forward(y_hat)
@@ -127,20 +127,6 @@ class ModelWrapper(pl.LightningModule):
             # accuracy = int(sum(y == y_hat)) == 2
             self.test_accuracy = self.test_accuracy + int(accuracy)
             self.test_size = self.test_size + 1
-
-        """y = batch['bias'].reshape(-1)
-        # y = batch['bias'][0]
-        y_hat = self._model(x)
-        print(f'y: {y}\ny_hat: {y_hat}')
-        loss = self.loss(y_hat.float(), y.float())
-        y_hat = self.transform.forward(y_hat)
-
-        # Change when changing number of classes to approximate
-        accuracy = int(sum(y == y_hat)) == self._model.num_classes
-        # accuracy = int(sum(y == y_hat)) == 2
-
-        self.test_accuracy = self.test_accuracy + int(accuracy)
-        self.test_size = self.test_size + 1"""
         return loss
 
     def on_test_end(self):
