@@ -32,7 +32,7 @@ def balance_datasets(train_data: Dataset, test_data: Dataset, split1: [int], spl
 
 class ModelDataset(Dataset):
 
-    def __init__(self, bias: str, data_directory: str,):
+    def __init__(self, bias: str, data_directory: str, new_model: bool = False):
         """"
         @:param:    bias
         @:param:    model_directory
@@ -48,6 +48,7 @@ class ModelDataset(Dataset):
         self.model_directory = os.path.join(data_directory, str(bias))
         self.num_models = len(os.listdir(self.model_directory))
         self.bias = bias
+        self.new_model = new_model
 
     def _build_digit_classifier(self):
         """
@@ -56,20 +57,37 @@ class ModelDataset(Dataset):
         :return: Model architecture without pre-trained weights.
         """
         model = Sequential()
-        model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(28, 28, 3)))
-        model.add(MaxPooling2D())
+        if not self.new_model:
+            model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(28, 28, 3)))
+            model.add(MaxPooling2D())
 
-        model.add(Conv2D(48, kernel_size=3, activation='relu'))
-        model.add(MaxPooling2D())
+            model.add(Conv2D(48, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
 
-        model.add(Conv2D(64, kernel_size=3, activation='relu'))
-        model.add(MaxPooling2D())
+            model.add(Conv2D(64, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
 
-        model.add(Flatten())
-        model.add(Dense(128, activation='relu'))
-        model.add(Dropout(0.3))
-        model.add(Dense(10, activation='softmax'))
-        model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+            model.add(Flatten())
+            model.add(Dense(128, activation='relu'))
+            model.add(Dropout(0.3))
+            model.add(Dense(10, activation='softmax'))
+            model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+        else:
+            model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(32, 32, 3)))
+            model.add(MaxPooling2D())
+
+            model.add(Conv2D(48, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
+
+            model.add(Conv2D(64, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
+
+            model.add(Flatten())
+            model.add(Dense(3163, activation='relu'))
+            model.add(Dense(128, activation='relu'))
+            model.add(Dropout(0.3))
+            model.add(Dense(10, activation='softmax'))
+            model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
         return model
 
     def print_digit_classifier_info(self, index: int, TF_summary: bool = False):
@@ -89,7 +107,11 @@ class ModelDataset(Dataset):
 
     def load_model(self, model_number: int):
         model = self._build_digit_classifier()
-        model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
+        try:
+            model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
+        except:
+            model = self._build_new_digit_classifier()
+            model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
         return model
 
     def concat(self):
@@ -133,8 +155,12 @@ class PhilipsModelDataset(ModelDataset):
     def __getitem__(self, index):
         dir_index = index // self.sublength
         model_number = index % self.sublength
-        biases = ['0.02', '0.03', '0.04', '0.05']
-        model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
+        try:
+            biases = ['0.02', '0.03', '0.04', '0.05']
+            model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
+        except:
+            biases = ['0.020', '0.030', '0.040', '0.050']
+            model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
 
         i = 0
         return_dict = {}
