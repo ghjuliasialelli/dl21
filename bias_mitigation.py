@@ -365,10 +365,10 @@ def main():
     net = load_network(options, layer_shapes)
 
     # compute permutation importance by layer
-    number_of_iterations = 3
-    permutation_importance_by_layer = get_permutation_importance_by_layers(net, weights_dataloader, number_of_iterations)
-    print(permutation_importance_by_layer)
-    exit(0)
+    # number_of_iterations = 10
+    # permutation_importance_by_layer = get_permutation_importance_by_layers(net, weights_dataloader, number_of_iterations)
+    # plotPermutationImportance(permutation_importance_by_layer)
+    # exit(0)
 
     # bias metrics
     actual_bias = []
@@ -693,6 +693,15 @@ def get_permutation_importance_by_layers(net, weights_dataloader, number_of_iter
         results['importances_std'].append(np.std(importances))
 
     return results
+
+def plotPermutationImportance(resultDict):
+    df = pd.DataFrame(resultDict)
+    df = df[['importances_mean','importances_std']]
+
+    df.columns = ['importance mean', 'importance std']
+    df.index = ['conv1','conv2','conv3','dense1','dense2']
+    fig = df.plot(kind='bar', figsize=(10,10), title="Permutation Importance", ylabel="decrease in accuracy", xlabel="layer")
+    fig.get_figure().savefig("plots/permutationImportance.jpg")
 
 if __name__ == '__main__':
     main()

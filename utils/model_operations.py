@@ -203,7 +203,7 @@ class LucasModelDataset(Dataset):
                 weights = layer['weights']
                 biases = layer['bias']
                 if self.use_weights:
-                    #ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                    ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
                     torch.from_numpy(weights).permute(3, 2, 0, 1)
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
                     i += 1
