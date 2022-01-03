@@ -24,7 +24,8 @@ PCA_cond = False
 reshuffled = True
 # Whether to print informative messages 
 VERBOSE = True
-
+# Whether to only consider the Conv2d layers
+only_conv = True
 
 ###########################################################################################
 # Helper functions ########################################################################
@@ -49,7 +50,11 @@ def loadModelWeights():
         for modelNumber in tqdm(range(len(train_data)), desc="loading model weights with bias "+b):
             model = train_data[modelNumber]
             layerNumber = 0
-            for layer in model.layers:
+
+            if only_conv : layers_to_consider = model.layers[:3]
+            else : layers_to_consider = model.layers
+
+            for layer in layers_to_consider:
                 if len(layer.get_weights()) != 0:
                     weights = layer.get_weights()[0]
                     biases = layer.get_weights()[1]
@@ -60,7 +65,11 @@ def loadModelWeights():
         for modelNumber in tqdm(range(len(test_data)), desc="loading model weights with bias "+b):
             model = test_data[modelNumber]
             layerNumber = 0
-            for layer in model.layers:
+
+            if only_conv : layers_to_consider = model.layers[:3]
+            else : layers_to_consider = model.layers
+
+            for layer in layers_to_consider:
                 if len(layer.get_weights()) != 0:
                     weights = layer.get_weights()[0]
                     biases = layer.get_weights()[1]
@@ -264,11 +273,9 @@ class Model(nn.Module):
         #       H_in = input size
         # -> (batch_size, 5, num_features)
 
-        x, _ = self.lstm0(x)        
-        x, (hidden, _) = self.lstm2(x)
+        x, (hidden, _) = self.lstm4(x)
         hidden = torch.reshape(hidden, shape = (hidden.size()[1], hidden.size()[0], hidden.size()[2]))
-        x = self.dense(hidden)
-        x = self.sm(x)
+        x = self.dense2(hidden)
         
         return torch.reshape(x, shape = (x.size()[0],x.size()[2]))
 
@@ -279,7 +286,7 @@ class Model(nn.Module):
 
 if __name__ == "__main__" :
 
-    save_path += 'lstm4_dense2/'
+    save_path += 'conv_only_reshuffled_latest_10_epochs_lstm4_dense2/'
     os.mkdir(save_path)
 
     ##### Loading the data ####################################################################
@@ -396,7 +403,9 @@ if __name__ == "__main__" :
 
     ##### Testing time #########################################################################
 
-    best_model = torch.load(save_path + 'best_model.pth.tar')
+    best_model_info = torch.load(save_path + 'best_model.pth.tar')
+    best_model = Model()
+    best_model.load_state_dict(best_model_info['state_dict'])
 
     for data in batcher(X_test, y_test, batch_size=y_test.shape[0]) :
         inputs, labels = data
