@@ -16,7 +16,7 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
-import pandas as pd
+from pandas import read_pickle, concat
 
 
 # For conversion from tensorflow to pytorch, see:
@@ -108,14 +108,14 @@ class ModelDataset(Dataset):
 
 class PhilipsModelDataset(ModelDataset):
 
-    def __init__(self, bias: str, data_directory: str, num_classes):
+    def __init__(self, bias: str, data_directory: str, num_classes, standardize=False):
         super(PhilipsModelDataset, self).__init__(bias, data_directory)
         self.data_directory = data_directory
         # set the number of classes: 4 or 2
         self.num_classes = num_classes#4    # or =2
         self.sublength = None
 
-        self.standardize = True
+        self.standardize = standardize
 
     def __len__(self):
         # lenths of the subdirectories are 2000
@@ -142,7 +142,8 @@ class PhilipsModelDataset(ModelDataset):
             #print(layer)
             if layer.__class__.__name__ == 'Conv2D':
                 weights = layer.get_weights()[0]
-                ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                #ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                ws = torch.from_numpy(weights).permute(3, 2, 0, 1)
                 if self.standardize:
                     mean = ws.mean(dim=1, keepdim=True)
                     sd = ws.std(dim=1, keepdim=True)
@@ -183,9 +184,9 @@ class LucasModelDataset(Dataset):
 
         for file in data_files:
             if self.data is None:
-                self.data = pd.read_pickle(file)
+                self.data = read_pickle(file)
             else:
-                self.data = pd.concat([self.data, pd.read_pickle(file)], ignore_index=True)
+                self.data = concat([self.data, read_pickle(file)], ignore_index=True)
 
     def __len__(self):
         # lenths of the subdirectories are 2000
@@ -202,7 +203,8 @@ class LucasModelDataset(Dataset):
                 weights = layer['weights']
                 biases = layer['bias']
                 if self.use_weights:
-                    ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                    #ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                    torch.from_numpy(weights).permute(3, 2, 0, 1)
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
                     i += 1
                 if self.use_biases:
@@ -231,22 +233,3 @@ class LucasModelDataset(Dataset):
         sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros).float().to(self.device)}
         # print(f'Sample: {sample["bias"]}')
         return sample
-
-
-class Loading_Dataset(Dataset):
-
-    def __init__(self, biases, datasets):
-        super(Loading_Dataset, self).__init__()
-        self.data = datasets
-        self.lengths = []
-        for dataset in datasets:
-            self.lengths.append(len(dataset))
-        self.biases = biases
-
-    def __len__(self):
-        pass
-
-    def __getitem__(self, index):
-        for i in range(len(self.lengths)):
-            if index - self.lengths[0] < 0:
-                return self.data[i][index] #, biases[i]
