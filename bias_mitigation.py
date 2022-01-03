@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import json
 import pandas as pd
+import time
 
 
 # DATASETS
@@ -144,6 +145,11 @@ def main():
         layer_shapes.append(arr.shape)
     net = load_network(options, layer_shapes)
 
+    # compute permutation importance by layer
+    # number_of_iterations = 3
+    # permutation_importance_by_layer = get_permutation_importance_by_layers(net, weights_dataloader, number_of_iterations)
+    # print(permutation_importance_by_layer)
+
     # bias metrics
     metrics_before = {'prediction': []}
     metrics_after = {'prediction': []}
@@ -189,6 +195,7 @@ def main():
         print(f'Prediction: {list(np.around(pb, decimals=5))} ---> {list(np.around(pa, decimals=5))}')
 
     plotMetrics(metrics_before,metrics_after)
+    
 
 def plotMetrics(metrics_before,metrics_after):
     """
@@ -234,6 +241,119 @@ def plotMetrics(metrics_before,metrics_after):
     fig = accuracy.plot(kind="bar", title="accuracy mean before and after mitigation", figsize=(10,10))
     fig.get_figure().savefig("plots/accuracyAfterMitigation.jpg")
 
+
+def get_permutation_importance_by_layers(net, weights_dataloader, number_of_iterations):
+    start = time.time()
+
+    # compute reference score s (accuracy of the net when evaluated on the whole training data)
+    net.eval()
+    with torch.no_grad():
+        trues = []
+        preds = []
+        for data in weights_dataloader:
+            preds.append(np.argmax(net(data['model_weights']).detach().cpu().numpy()[0]))
+            trues.append(np.argmax(data['bias'].detach().cpu().numpy()[0]))
+        preds = np.array(preds)
+        trues = np.array(trues)
+    s = np.count_nonzero(preds == trues) / len(preds)
+
+    end = time.time()
+    print("reference evaluation done", end-start)
+    start = time.time()
+    
+    
+    # this code is only of the initialization of the data frame
+    index = None
+    layerNames = None
+    for data in weights_dataloader:
+        mainIndex = [x for x in data['model_weights'].keys() for i in range(len(np.ravel(data['model_weights'][x])))]
+        layerNames = data['model_weights'].keys()
+        subIndex = ["w"+str(i) for x in data['model_weights'].keys() for i in range(len(np.ravel(data['model_weights'][x])))]
+        arrays = [
+            mainIndex,
+            subIndex,
+        ]
+        tuples = list(zip(*arrays))
+        index = pd.MultiIndex.from_tuples(tuples, names=["layer", "position"])
+        break
+    df = pd.DataFrame(columns=index)
+
+    end = time.time()
+    print("data frame initialization done", end-start)
+    start = time.time()
+
+
+    # fills the data frame
+    counter = 0 # TODO: remove this line for production
+    for data in weights_dataloader:
+        layerValues = []
+        for layer in data['model_weights'].keys():
+            layerValues += list(np.ravel(data['model_weights'][layer]))
+        df = df.append(pd.Series(layerValues,index=index), ignore_index=True)
+        
+        # TODO: remove those three lines for production
+        
+        counter += 1
+        if counter == 5:
+            break
+        
+
+    end = time.time()
+    print("data frame filling done", end-start)
+    start = time.time()
+    results = {
+        'importances_mean': [],
+        'importances_std': [],
+        'importances': [],
+    }
+
+    # we permutate layer by layer
+    for j in layerNames:
+        # we only work on a copy of the original data frame and reset it when permutating a new layer
+        dfCopy = df.copy()
+
+        repeats = []
+
+        # repeat process for each feature number_of_iterations times
+        for k in range(number_of_iterations):
+            # permutate all columns associated to a layer
+            for col in dfCopy[j].columns:
+                dfCopy[(j,col)] = np.random.permutation(dfCopy[(j,col)].values)
+
+            # TODO: map back the data frame dfCopy to a correct shaped input for net
+            permutated_weights_dataloader = weights_dataloader
+
+            # compute s_k_j which is equivalent to the accuracy measured on the data from dfCopy
+            net.eval()
+            with torch.no_grad():
+                trues = []
+                preds = []
+                for data in permutated_weights_dataloader:
+                    preds.append(np.argmax(net(data['model_weights']).detach().cpu().numpy()[0]))
+                    trues.append(np.argmax(data['bias'].detach().cpu().numpy()[0]))
+                preds = np.array(preds)
+                trues = np.array(trues)
+
+            s_k_j = np.count_nonzero(preds == trues) / len(preds)
+
+            # TODO: remove this line
+            # we substract a random noise
+            s_k_j -= np.random.random_sample()
+
+            repeats.append(s_k_j)
+
+        end = time.time()
+        print("finished", j, end-start)
+        start = time.time()
+
+        importances = list(np.array([s]*len(repeats))-np.array(repeats))
+        results['importances'].append(importances)
+        # calculate importance mean
+        results['importances_mean'].append(np.mean(importances))
+        # calculate importance standard deviation
+        results['importances_std'].append(np.std(importances))
+
+    return results
 
 if __name__ == '__main__':
     main()
