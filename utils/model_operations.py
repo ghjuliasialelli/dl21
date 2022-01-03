@@ -16,7 +16,7 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
-import pandas as pd
+from pandas import read_pickle, concat
 
 
 # For conversion from tensorflow to pytorch, see:
@@ -142,7 +142,8 @@ class PhilipsModelDataset(ModelDataset):
             #print(layer)
             if layer.__class__.__name__ == 'Conv2D':
                 weights = layer.get_weights()[0]
-                ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                #ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                ws = torch.from_numpy(weights).permute(3, 2, 0, 1)
                 if self.standardize:
                     mean = ws.mean(dim=1, keepdim=True)
                     sd = ws.std(dim=1, keepdim=True)
@@ -183,9 +184,9 @@ class LucasModelDataset(Dataset):
 
         for file in data_files:
             if self.data is None:
-                self.data = pd.read_pickle(file)
+                self.data = read_pickle(file)
             else:
-                self.data = pd.concat([self.data, pd.read_pickle(file)], ignore_index=True)
+                self.data = concat([self.data, read_pickle(file)], ignore_index=True)
 
     def __len__(self):
         # lenths of the subdirectories are 2000
@@ -202,7 +203,8 @@ class LucasModelDataset(Dataset):
                 weights = layer['weights']
                 biases = layer['bias']
                 if self.use_weights:
-                    ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                    #ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                    torch.from_numpy(weights).permute(3, 2, 0, 1)
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
                     i += 1
                 if self.use_biases:

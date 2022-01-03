@@ -8,7 +8,6 @@
 
 import pytorch_lightning as pl
 import torch
-from sklearn.preprocessing import StandardScaler
 
 from utils.model_operations import *
 from utils.lightning_wrappers import *
@@ -86,7 +85,7 @@ lightning_model = ModelWrapper(model_architecture=classifier, learning_rate=1e-3
                                batch_size=batch_size)
 # print(lightning_model.forward(m))
 
-trainer = pl.Trainer(max_epochs=args.epochs, reload_dataloaders_every_n_epochs=2, deterministic=True)
+trainer = pl.Trainer(max_epochs=args.epochs, deterministic=True) #, reload_dataloaders_every_n_epochs=2)
 
 # Train
 trainer.fit(lightning_model) #, [train_loader, val_dataloader])

@@ -411,7 +411,8 @@ class Reshaper2(nn.Module):
         if self.reshape_dim is not None:
             x = x.reshape(self.reshape_dim)
         if self.perm_dim is not None:
-            x = torch.permute(x, self.perm_dim)
+            #x = torch.permute(x, self.perm_dim)
+            x = x.permute(self.perm_dim)
         return x
 
 
