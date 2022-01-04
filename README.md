@@ -71,7 +71,7 @@ The appriopriate flags are described and can be set at the top of the file. Then
 python rnn.py
 ```
 
-Checkpoints of trained models can be found in the `data/saved/lstm/` folder. 
+Checkpoints of trained models can be found in the `data/trained/lstm/` folder. 
 
 ---
 ## Links and References
