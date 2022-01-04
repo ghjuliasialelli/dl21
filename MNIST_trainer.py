@@ -50,6 +50,7 @@ def highest_model_number(path):
     for bias in ['0.020', '0.030', '0.040', '0.050']:
         # get highest model number in directory
         max_i = 0
+        os.makedirs(os.path.join(path, bias), exist_ok=True)
         model_names = os.listdir(os.path.join(path, bias))
         for m in model_names:
             i = int(m[6:-3])

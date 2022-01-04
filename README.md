@@ -10,11 +10,45 @@
 ## Usage Instructions
 
 Different sections of the report were generated with different files, which all are supplied in this repository.
-__First__,To install dependencies, use the file ***.env for installation of a new conda environment with the required
-packages.
+__First__, the requirements, which need to be installed / upgraded:
+- torch
+- pytorch-lightning
+- sklearn
+- tensorflow
 
-To reproduce the classifiers, run the supplied run_models.sh file. __(??)__
+### Bias Classifiers
+To obtain the bias-classifiers, it is necessary to reproduce (i.e. train the classifiers). To do this, run:
+```
+python trainer.py --epochs [num_epochs] --stepsize [1 for 100% train data, 10 for 10%] --model_number [number] [path-to-data]
+```
+Furthermore, it is possible to supply a model number, where:
+- 0 corresponds to Dense
+- 1 corresponds to Conv
+- 2 corresponds to the (adapted) Conv model used for refinement
 
+Further, calling trainer.py has the options:
+- Setting the flag **--use_dense** will make the classifier recognise and use the dense layers of the MNIST classifier.
+- Setting the flag **--reshuffle** will force the reshuffling of the train- and test-dataset.
+
+The models will be stored in the directory [path-to-data]/bias_classifiers. An example call would therefore be:
+```
+python3 trainer.py --model_number 0 --epochs 1 --stepsize 1 --reshuffle --use_dense /home/user/Documents/DL_Project/
+```
+
+For **refinement** of the classifiers in the list above, use:
+```
+python3 refiner.py --epochs [num-refinement-epochs] [path-to-original-model_weights] [path-to-generalization_dataset] [path-to-bias_classifiers]
+```
+
+Further, calling refine.py has the options:
+- Setting the flag **--test_on_old** will use the original (authors) test-set for training and refinement.
+  - Omitting the flag will refine and test using the generalisation set.
+
+### Generalization Dataset
+To generate data as we did for the generalization dataset, use:
+```
+python3 MNIST_trainer.py --epochs 1 [path-to-colored_mnist] [path-to-store-the-generalization_dataset]```
+```
 
 ### Principal Component Analysis and K-Nearest Neighbors
 
@@ -66,12 +100,13 @@ Various classifiers were investigated for this task.
 #### RNN
 All operations concerning the RNN model take place in the `rnn.py` file. 
 
-The appriopriate flags are described and can be set at the top of the file. Then, one needs only to run : 
+The appriopriate flags are described and can be set at the top of the file. They are currently set for the training of the RNN model on the re-shuffled DigiitWdb dataset. 
+Then, one needs only to run : 
 ```
 python rnn.py
 ```
 
-Checkpoints of trained models can be found in the `data/saved/lstm/` folder. 
+Checkpoints of trained models can be made available upon request. They would normally be found in a shared Polybox folder, but poor Wifi connection is preventing their uploading.
 
 ---
 ## Links and References

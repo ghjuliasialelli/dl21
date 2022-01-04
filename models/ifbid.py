@@ -311,13 +311,14 @@ class Reshaper(nn.Module):
 
 class Conv2D_IFBID_Model(IFBID_Model):
 
-    def __init__(self, layer_shapes, use_dense, num_classes, batch_size=1, new_model=False):
+    def __init__(self, layer_shapes, use_dense, num_classes, batch_size=1, new_model=False, two_layers=True):
         super(Conv2D_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=use_dense, num_classes=num_classes,
                                                  batch_size=batch_size)
         if new_model:
             self.last_index = len(layer_shapes)
         else:
             self.last_index = len(layer_shapes)-1
+        self.two_layers = two_layers
         """d = x[-1]
         s = x[0]
         if len(x) > 2:
@@ -326,6 +327,7 @@ class Conv2D_IFBID_Model(IFBID_Model):
             else:
                 layer_2 = nn.MaxPool2d(kernel_size=(d, d))"""
         m = 100
+        mp = 0
         if use_dense:
             m2 = 10
         else:
@@ -336,11 +338,15 @@ class Conv2D_IFBID_Model(IFBID_Model):
 
         # The info below is not used in the baseline!
         if use_dense:
-            #self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
+            if not self.two_layers:
+                self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
+                mp = 2*m2
+            else:
+                mp = m2
             self.block_4 = self.build_d_block(4, layer_shapes[-1], m=m2)
 
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m + m2, out_features=self.num_classes),
+            nn.Linear(in_features=3*m + mp, out_features=self.num_classes),
             # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
@@ -367,7 +373,8 @@ class Conv2D_IFBID_Model(IFBID_Model):
         output_tensor.append(self.block_2(model['layer_2'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         # BELOW NOT USED FOR BASELINE!
         if self.use_dense_layers:
-            #output_tensor.append(self.block_3(model['layer_3']))
+            if not self.two_layers:
+                output_tensor.append(self.block_3(model['layer_3']))
             output_tensor.append(self.block_4(model[f'layer_{self.last_index}']))
 
         for i in range(len(output_tensor)):
