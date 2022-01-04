@@ -33,8 +33,8 @@ args = parser.parse_args()
 # Ensure Reproducability:
 pl.seed_everything(2022, workers=True)
 
-# Initialise model data
-data = PhilipsModelDataset('0.02', os.path.join(args.path, 'train'), num_classes=4, standardize=False)
+# Initialise model data. Set new_model=True to see how we train on the generalisation set
+data = PhilipsModelDataset('0.02', os.path.join(args.path, 'train'), num_classes=4, standardize=False, new_model=False)
 data_indices = list(range(0, len(data), args.stepsize))
 data = torch.utils.data.Subset(data, data_indices)
 
@@ -48,8 +48,9 @@ m = data[0]['model_weights']
 shapes = []
 for layer in m:
     shapes.append(m[layer].shape)
+print(f'Layer-Shapes: {shapes}')
 
-# Initialise the classifier model for training
+# Choose and Initialise the classifier model for training
 batch_size = 2
 # classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 # classifier = Dense_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
@@ -61,9 +62,9 @@ loss = torch.nn.BCELoss()
 
 # Initialise lightning checkpointing.
 
-# Initialise test_data:
+# Initialise test_data.  Set new_model=True to see how we train on the generalisation set.
 test_data = PhilipsModelDataset('0.02', os.path.join(args.path, 'test'), num_classes=4,
-                                standardize=False)
+                                standardize=False, new_model=True)
 data_indices = list(range(0, len(test_data), args.stepsize))
 test_data = torch.utils.data.Subset(test_data, data_indices)
 
@@ -85,19 +86,18 @@ lightning_model = ModelWrapper(model_architecture=classifier, learning_rate=1e-3
                                dataset_distr=[int(0.7*len(data)), ceil(len(data) - 0.7*len(data))], test_dataset=test_data,
                                batch_size=batch_size)
 
-trainer = pl.Trainer(max_epochs=args.epochs, deterministic=True) #, reload_dataloaders_every_n_epochs=2)
+trainer = pl.Trainer(max_epochs=args.epochs, deterministic=True, reload_dataloaders_every_n_epochs=2)
 
-# Train
+# Train the model.
 trainer.fit(lightning_model)
 
 # Test the model.
-
-print("Test at location")
 trainer.test(lightning_model)
 
+# get and record accuracy obtained from test.
 test_accuracy = lightning_model._model.test_accuracy
 
-with open(os.path.join(args.path, f'ifbid+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
+with open(os.path.join(args.path, f'itest-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=' ')
     writer.writerow([test_accuracy])
 
@@ -105,5 +105,5 @@ if not args.debug:
     os.makedirs(os.path.join(args.path, 'bias_classifiers'), exist_ok=True)
     torch.save(lightning_model._model.state_dict(),
                os.path.join(args.path, 'bias_classifiers',
-                            f'ifbid+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
+                            f'test-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
                )

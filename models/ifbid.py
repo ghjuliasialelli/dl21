@@ -224,7 +224,7 @@ class Better_Dense(IFBID_Model):
     overfitting.
     """
 
-    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1):
+    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1, refine=False):
         super(Better_Dense, self).__init__(layer_shapes, use_dense, num_classes, batch_size)
 
         self.blocks = []

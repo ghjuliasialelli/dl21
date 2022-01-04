@@ -107,11 +107,7 @@ class ModelDataset(Dataset):
 
     def load_model(self, model_number: int):
         model = self._build_digit_classifier()
-        try:
-            model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
-        except:
-            model = self._build_new_digit_classifier()
-            model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
+        model.load_weights(os.path.join(self.model_directory, f'{model_number}.h5'))
         return model
 
     def concat(self):
@@ -130,12 +126,14 @@ class ModelDataset(Dataset):
 
 class PhilipsModelDataset(ModelDataset):
 
-    def __init__(self, bias: str, data_directory: str, num_classes, standardize=False):
+    def __init__(self, bias: str, data_directory: str, num_classes, standardize=False,
+                 new_model=False):
         super(PhilipsModelDataset, self).__init__(bias, data_directory)
         self.data_directory = data_directory
         # set the number of classes: 4 or 2
         self.num_classes = num_classes#4    # or =2
         self.sublength = None
+        self.new_model = new_model
 
         self.standardize = standardize
 
@@ -144,6 +142,7 @@ class PhilipsModelDataset(ModelDataset):
         length = 0
         for directory in os.listdir(self.data_directory):
             length = length + len(os.listdir(os.path.join(self.data_directory, directory)))
+            #print(len(os.listdir(os.path.join(self.data_directory, directory))))
             self.sublength = len(os.listdir(os.path.join(self.data_directory, directory)))
         return length
 
@@ -155,12 +154,11 @@ class PhilipsModelDataset(ModelDataset):
     def __getitem__(self, index):
         dir_index = index // self.sublength
         model_number = index % self.sublength
-        try:
-            biases = ['0.02', '0.03', '0.04', '0.05']
-            model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
-        except:
+        biases = ['0.02', '0.03', '0.04', '0.05']
+        model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
+        """except:
             biases = ['0.020', '0.030', '0.040', '0.050']
-            model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
+            model = self.load_model_k(bias=biases[dir_index], model_number=model_number)"""
 
         i = 0
         return_dict = {}
