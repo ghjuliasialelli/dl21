@@ -100,7 +100,8 @@ Various classifiers were investigated for this task.
 #### RNN
 All operations concerning the RNN model take place in the `rnn.py` file. 
 
-The appriopriate flags are described and can be set at the top of the file. Then, one needs only to run : 
+The appriopriate flags are described and can be set at the top of the file. They are currently set for the training of the RNN model on the re-shuffled DigiitWdb dataset. 
+Then, one needs only to run : 
 ```
 python rnn.py
 ```
