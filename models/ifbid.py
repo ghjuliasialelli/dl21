@@ -224,7 +224,7 @@ class Better_Dense(IFBID_Model):
     overfitting.
     """
 
-    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1):
+    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1, refine=False):
         super(Better_Dense, self).__init__(layer_shapes, use_dense, num_classes, batch_size)
 
         self.blocks = []
@@ -328,10 +328,10 @@ class Conv2D_IFBID_Model(IFBID_Model):
         # The info below is not used in the baseline!
         if use_dense:
             self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
-            # self.block_4 = self.build_block(4, layer_shapes[4], c=100, d=3, m=m)
+            self.block_4 = self.build_d_block(4, layer_shapes[4], m=m2)
 
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m + m2, out_features=self.num_classes),
+            nn.Linear(in_features=3*m + 2*m2, out_features=self.num_classes),
             # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
@@ -360,6 +360,7 @@ class Conv2D_IFBID_Model(IFBID_Model):
         # BELOW NOT USED FOR BASELINE!
         if self.use_dense_layers:
             output_tensor.append(self.block_3(model['layer_3']))
+            output_tensor.append(self.block_4(model['layer_4']))
 
         for i in range(len(output_tensor)):
             output_tensor[i] = output_tensor[i].squeeze()
@@ -411,7 +412,8 @@ class Reshaper2(nn.Module):
         if self.reshape_dim is not None:
             x = x.reshape(self.reshape_dim)
         if self.perm_dim is not None:
-            x = torch.permute(x, self.perm_dim)
+            #x = torch.permute(x, self.perm_dim)
+            x = x.permute(self.perm_dim)
         return x
 
 

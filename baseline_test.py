@@ -1,3 +1,5 @@
+import random
+
 import numpy
 
 from utils.model_operations import ModelDataset
@@ -78,13 +80,19 @@ def load_weights_per_layer():
 
 
 def save_data_as_parquet():
-    train, test = load_weights()
-    train.to_parquet('data/train_weights.parquet', index=False)
-    test.to_parquet('data/test_weights.parquet', index=False)
+    if not os.path.exists('data/train_weights.parquet') or not os.path.exists('data/test_weights.parquet'):
+        train, test = load_weights()
+        if not os.path.exists('data/train_weights.parquet'):
+            train.to_parquet('data/train_weights.parquet', index=False)
+        if not os.path.exists('data/test_weights.parquet'):
+            test.to_parquet('data/test_weights.parquet', index=False)
 
-    train, test = load_weights_per_layer()
-    train.to_parquet('data/train_layer_weights.parquet', index=False)
-    test.to_parquet('data/test_layer_weights.parquet', index=False)
+    if not os.path.exists('data/train_layer_weights.parquet') or not os.path.exists('data/test_layer_weights.parquet'):
+        train, test = load_weights_per_layer()
+        if not os.path.exists('data/train_layer_weights.parquet'):
+            train.to_parquet('data/train_layer_weights.parquet', index=False)
+        if not os.path.exists('data/test_layer_weights.parquet'):
+            test.to_parquet('data/test_layer_weights.parquet', index=False)
 
 
 def load_data_from_parquet(per_layer=False):
@@ -125,15 +133,29 @@ def autoencoder_reduce_dimensions(dim=100):
     test_y.to_csv(f'data/reduced/autoencoder_{dim}/test_y.csv', index=False)
 
 
-def pca_reduce_dimensions(dim=100, kernel=None, **params):
-    train, test = load_data_from_parquet()
+def pca_reduce_dimensions(dim=100, only_conv=False, kernel=None, **params):
+    if only_conv:
+        train, test = load_data_from_parquet(per_layer=True)
+        for l in range(3):
+            if l == 0:
+                train_X = pd.DataFrame(np.array(list(train['weights'].loc[train['layer'] == l])))
+                train_y = pd.DataFrame([bias_to_label[b] for b in train['bias'].loc[train['layer'] == l]])
+                test_X = pd.DataFrame(np.array(list(test['weights'].loc[train['layer'] == l])))
+                test_y = pd.DataFrame([bias_to_label[b] for b in test['bias'].loc[train['layer'] == l]])
+            else:
+                train_X = pd.concat([train_X, pd.DataFrame(np.array(list(train['weights'].loc[train['layer'] == l])))], axis=1)
+                test_X = pd.concat([test_X, pd.DataFrame(pd.DataFrame(np.array(list(test['weights'].loc[train['layer'] == l]))))], axis=1)
 
-    train_X = pd.DataFrame(np.array(list(train['weights'])))
-    train_y = pd.DataFrame([bias_to_label[b] for b in train['bias']])
-    test_X = pd.DataFrame(np.array(list(test['weights'])))
-    test_y = pd.DataFrame([bias_to_label[b] for b in test['bias']])
+        print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
+    else:
+        train, test = load_data_from_parquet()
 
-    print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
+        train_X = pd.DataFrame(np.array(list(train['weights'])))
+        train_y = pd.DataFrame([bias_to_label[b] for b in train['bias']])
+        test_X = pd.DataFrame(np.array(list(test['weights'])))
+        test_y = pd.DataFrame([bias_to_label[b] for b in test['bias']])
+
+        print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
 
     if kernel is None:
         dim_reduction = PCADimensionReductionModel(dim, **params)
@@ -145,10 +167,16 @@ def pca_reduce_dimensions(dim=100, kernel=None, **params):
 
     print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
 
-    if kernel is None:
-        name = f'pca_{dim}'
+    if only_conv:
+        if kernel is None:
+            name = f'pca_{dim}_conv'
+        else:
+            name = f'{kernel}_pca_{dim}_conv'
     else:
-        name = f'{kernel}_pca_{dim}'
+        if kernel is None:
+            name = f'pca_{dim}'
+        else:
+            name = f'{kernel}_pca_{dim}'
 
     if not os.path.exists(f'data/reduced/{name}'):
         os.mkdir(f'data/reduced/{name}')
@@ -224,12 +252,66 @@ def pca_reduce_dimensions_per_layer(dim=100, kernel=None, **params):
         test_y.to_csv(f'data/reduced/{name}/test_y.csv', index=False)
 
 
-def get_classification_accuracy(classifier, reduced_data='autoencoder_100', scaling=True, selected_features=None, selected_labels=None, plot=False):
+def get_classification_accuracy(classifier, reduced_data='autoencoder_100', scaling=True, shuffle=False, fine_tune=0, selected_features=None, selected_labels=None, plot=False):
     if isinstance(reduced_data, str):
         train_X = pd.read_csv(f'data/reduced/{reduced_data}/train_X.csv')
         train_y = np.array(pd.read_csv(f'data/reduced/{reduced_data}/train_y.csv'))[:, 0]
         test_X = pd.read_csv(f'data/reduced/{reduced_data}/test_X.csv')
         test_y = np.array(pd.read_csv(f'data/reduced/{reduced_data}/test_y.csv'))[:, 0]
+        if shuffle:
+            random.seed(2022)
+            new_train_X = np.empty((7000, train_X.shape[1]))
+            new_train_y = np.empty((7000,))
+            new_test_X = np.empty((3000, train_X.shape[1]))
+            new_test_y = np.empty((3000,))
+            train_idx = random.sample([i for i in range(train_X.shape[0])], int(train_X.shape[0] * 0.7))
+            test_idx = [i for i in range(train_X.shape[0]) if i not in train_idx]
+            new_train_X[:int(train_X.shape[0] * 0.7)] = train_X.iloc[train_idx]
+            new_train_y[:int(train_X.shape[0] * 0.7)] = train_y[train_idx]
+            new_test_X[:int(train_X.shape[0] * 0.3)] = train_X.iloc[test_idx]
+            new_test_y[:int(train_X.shape[0] * 0.3)] = train_y[test_idx]
+            train_idx = random.sample([i for i in range(test_X.shape[0])], int(test_X.shape[0] * 0.7))
+            test_idx = [i for i in range(test_X.shape[0]) if i not in train_idx]
+            new_train_X[-int(test_X.shape[0] * 0.7):] = test_X.iloc[train_idx]
+            new_train_y[-int(test_X.shape[0] * 0.7):] = test_y[train_idx]
+            new_test_X[-int(test_X.shape[0] * 0.3):] = test_X.iloc[test_idx]
+            new_test_y[-int(test_X.shape[0] * 0.3):] = test_y[test_idx]
+            train_X = new_train_X
+            train_y = new_train_y
+            test_X = new_test_X
+            test_y = new_test_y
+
+        if fine_tune > 0:
+            random.seed(2022)
+            new_train_X = np.empty((train_X.shape[0] + fine_tune*4, train_X.shape[1]))
+            new_train_X[:train_X.shape[0]] = train_X
+            new_train_y = np.empty((train_X.shape[0] + fine_tune*4,))
+            new_train_y[:train_X.shape[0]] = train_y
+            new_test_X = np.empty((test_X.shape[0] - fine_tune*4, train_X.shape[1]))
+            new_test_y = np.empty((test_X.shape[0] - fine_tune*4,))
+            fine_tune_idx = random.sample([i for i in range(500)], fine_tune)
+            filter_idx = [i for i in range(500) if i not in fine_tune_idx]
+            for b in range(4):
+                new_train_X[train_X.shape[0]+b*fine_tune:train_X.shape[0]+(b+1)*fine_tune] = test_X.loc[test_y == b].iloc[fine_tune_idx]
+                new_train_y[train_X.shape[0]+b*fine_tune:train_X.shape[0]+(b+1)*fine_tune] = test_y[test_y == b][fine_tune_idx]
+                new_test_X[b*(500-fine_tune):(b+1)*(500-fine_tune)] = test_X.loc[test_y == b].iloc[filter_idx]
+                new_test_y[b*(500-fine_tune):(b+1)*(500-fine_tune)] = test_y[test_y == b][filter_idx]
+            train_X = new_train_X
+            train_y = new_train_y
+            test_X = new_test_X
+            test_y = new_test_y
+
+        # indices = [i for i in range(len(train_X))]
+        # test_indices = random.sample(indices, int(0.2 * len(train_X)))
+        # test_X = train_X.iloc[test_indices]
+        # test_y = train_y[test_indices]
+        # train_indices = [i for i in range(len(train_X)) if i not in test_indices]
+        # train_X = train_X.iloc[train_indices]
+        # train_y = train_y[train_indices]
+
+
+        print(train_X.shape, test_X.shape)
+        print(train_y.shape, test_y.shape)
     else:
         train_X = reduced_data['train_X']
         train_y = reduced_data['train_y']
@@ -386,78 +468,22 @@ def get_best_components_and_accuracy(classifier, reduced_data='autoencoder_100',
     return acc, accs, features, time.time() - start_time
 
 
+from sklearn.neighbors import KNeighborsClassifier
 
-from sklearn.svm import SVC, LinearSVC
-from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
-from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier, GradientBoostingClassifier
-from sklearn.naive_bayes import GaussianNB, BernoulliNB
-from sklearn.neighbors import KNeighborsClassifier, NearestCentroid, RadiusNeighborsClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
-from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import RidgeClassifier, Perceptron, PassiveAggressiveClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier
 
 if __name__ == '__main__':
-    models = []
-    models.append(("svc poly 3", SVC(kernel="poly", degree=3, class_weight="balanced")))
-    models.append(("svc rbf", SVC(C=0.5, kernel="rbf", class_weight="balanced")))
-    models.append(("svc sigmoid", SVC(C=3, kernel="sigmoid", class_weight="balanced")))
-    models.append(("svc linear l1", LinearSVC(class_weight="balanced", penalty='l1', dual=False)))
-    models.append(("svc linear l2", LinearSVC(class_weight="balanced", penalty='l2')))
-    models.append(("bernoulli naive bayes", BernoulliNB()))
-    models.append(("gaussian naive bayes", GaussianNB()))
-    models.append(("decision tree", DecisionTreeClassifier(class_weight="balanced")))
-    models.append(("extra tree", ExtraTreeClassifier(class_weight="balanced")))
-    models.append(("extra trees", ExtraTreesClassifier(n_estimators=100, class_weight="balanced", n_jobs=4)))
-    models.append(("k-nearest-neighbors distance", KNeighborsClassifier(weights="distance", n_jobs=4)))
-    models.append(("k-nearest-neighbors uniform", KNeighborsClassifier(weights="uniform", n_jobs=4)))
-    models.append(("linear dicriminant analysis", LinearDiscriminantAnalysis()))
-    models.append(("nearest centroid", NearestCentroid()))
-    models.append(("quadratic discriminant analysis", QuadraticDiscriminantAnalysis()))
-    models.append(("random forest", RandomForestClassifier(n_estimators=100, class_weight="balanced", n_jobs=4)))
-    models.append(("ridge classification", RidgeClassifier(class_weight="balanced")))
-    models.append(("perceptron", Perceptron(class_weight="balanced")))
+    save_data_as_parquet()
 
+    random.seed(2021)
+    np.random.seed(2021)
+    pca_reduce_dimensions(dim=100)
+    random.seed(2021)
+    np.random.seed(2021)
+    pca_reduce_dimensions(dim=100, only_conv=True)
 
-
-
-    # model = ExtraTreesClassifier(n_estimators=100)
-    # model = LinearSVC()
-
-    for name, model in models:
-        # acc, accs, feat, runtime = get_best_components_and_accuracy(model, reduced_data='pca_100', num_features=100, selected_labels=[0,1,2,3])
-        # print(name, "\t", acc, "\t", f"{runtime/60:.2f}", "\t", len(feat))
-        # print(accs)
-        # print(feat)
-        # print()
-        acc = get_classification_accuracy(model, reduced_data="pca_100", selected_labels=[0,3], plot=False)
-        print(name, "\t", acc)
-        print()
-
-    # best = 0
-    # for hls in range(50, 1050, 50):
-    #     print(hls)
-    #     model = ExtraTreeClassifier(class_weight="balanced")
-    #     accuracy = get_classification_accuracy(model, reduced_data="pca_100", selected_labels=[0,1,2,3], plot=False)
-    #     if accuracy > best:
-    #         best = accuracy
-    # print()
-    # print("Best:", best)
-
-
-    # for n in range(1, 200):
-    #     for weights in ['uniform', 'distance']:
-    #         print(n, weights)
-
-    #         model = KNeighborsClassifier(n_neighbors=n, weights=weights)
-    #         get_classification_accuracy(model, reduced_data="pca_10", selected_labels=[0, 3], plot=False)
-
-    # get_two_best_components(model, reduced_data="pca_100", num_features=100, selected_labels=[0, 3], save=True, filename="two_best_pca_components_linear")
-    # get_two_best_components(model, reduced_data="autoencoder_100", num_features=100, save=True)
-    #
-    # for l in range(1, 6):
-    #     get_two_best_components(model, reduced_data=f"pca_100_l{l}", num_features=100, save=True)
-    #     get_two_best_components(model, reduced_data=f"autoencoder_100_l{l}", num_features=100, save=True)
-
-# fix baseline
-# write about idea (feature mitigation)
+    classifier = KNeighborsClassifier(weights="distance", n_jobs=4)
+    print(f"Accuracy (trained on orig. Trainset, tested on orig. Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', plot=True):.5f}")
+    print(f"Accuracy (trained on orig. Trainset + 10% orig. Testset, tested on 90% orig. Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', fine_tune=50, plot=True):.5f}")
+    print(f"Accuracy (trained on orig. Trainset + 20% orig. Testset, tested on 80% orig. Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', fine_tune=100, plot=True):.5f}")
+    print(f"Accuracy (trained on reshuffled Trainset, tested on reshuffled Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', shuffle=True):.5f}")
+    print(f"Accuracy (trained on reshuffled Trainset, tested on reshuffled Testset, using only Conv-Layers): {get_classification_accuracy(classifier, reduced_data='pca_100_conv', shuffle=True, plot=True):.5f}")

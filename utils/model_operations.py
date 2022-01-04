@@ -4,7 +4,6 @@
 # ------------
 
 
-import h5py
 import os
 import sys
 
@@ -16,7 +15,7 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
-import pandas as pd
+from pandas import read_pickle, concat
 
 
 # For conversion from tensorflow to pytorch, see:
@@ -32,7 +31,7 @@ def balance_datasets(train_data: Dataset, test_data: Dataset, split1: [int], spl
 
 class ModelDataset(Dataset):
 
-    def __init__(self, bias: str, data_directory: str,):
+    def __init__(self, bias: str, data_directory: str, new_model: bool = False):
         """"
         @:param:    bias
         @:param:    model_directory
@@ -48,6 +47,7 @@ class ModelDataset(Dataset):
         self.model_directory = os.path.join(data_directory, str(bias))
         self.num_models = len(os.listdir(self.model_directory))
         self.bias = bias
+        self.new_model = new_model
 
     def _build_digit_classifier(self):
         """
@@ -56,20 +56,37 @@ class ModelDataset(Dataset):
         :return: Model architecture without pre-trained weights.
         """
         model = Sequential()
-        model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(28, 28, 3)))
-        model.add(MaxPooling2D())
+        if not self.new_model:
+            model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(28, 28, 3)))
+            model.add(MaxPooling2D())
 
-        model.add(Conv2D(48, kernel_size=3, activation='relu'))
-        model.add(MaxPooling2D())
+            model.add(Conv2D(48, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
 
-        model.add(Conv2D(64, kernel_size=3, activation='relu'))
-        model.add(MaxPooling2D())
+            model.add(Conv2D(64, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
 
-        model.add(Flatten())
-        model.add(Dense(128, activation='relu'))
-        model.add(Dropout(0.3))
-        model.add(Dense(10, activation='softmax'))
-        model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+            model.add(Flatten())
+            model.add(Dense(128, activation='relu'))
+            model.add(Dropout(0.3))
+            model.add(Dense(10, activation='softmax'))
+            model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+        else:
+            model.add(Conv2D(24, kernel_size=5, activation='relu', input_shape=(32, 32, 3)))
+            model.add(MaxPooling2D())
+
+            model.add(Conv2D(48, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
+
+            model.add(Conv2D(64, kernel_size=3, activation='relu'))
+            model.add(MaxPooling2D())
+
+            model.add(Flatten())
+            model.add(Dense(3163, activation='relu'))
+            model.add(Dense(128, activation='relu'))
+            model.add(Dropout(0.3))
+            model.add(Dense(10, activation='softmax'))
+            model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
         return model
 
     def print_digit_classifier_info(self, index: int, TF_summary: bool = False):
@@ -108,20 +125,23 @@ class ModelDataset(Dataset):
 
 class PhilipsModelDataset(ModelDataset):
 
-    def __init__(self, bias: str, data_directory: str, num_classes):
+    def __init__(self, bias: str, data_directory: str, num_classes, standardize=False,
+                 new_model=False):
         super(PhilipsModelDataset, self).__init__(bias, data_directory)
         self.data_directory = data_directory
         # set the number of classes: 4 or 2
         self.num_classes = num_classes#4    # or =2
         self.sublength = None
+        self.new_model = new_model
 
-        self.standardize = True
+        self.standardize = standardize
 
     def __len__(self):
         # lenths of the subdirectories are 2000
         length = 0
         for directory in os.listdir(self.data_directory):
             length = length + len(os.listdir(os.path.join(self.data_directory, directory)))
+            #print(len(os.listdir(os.path.join(self.data_directory, directory))))
             self.sublength = len(os.listdir(os.path.join(self.data_directory, directory)))
         return length
 
@@ -135,6 +155,9 @@ class PhilipsModelDataset(ModelDataset):
         model_number = index % self.sublength
         biases = ['0.02', '0.03', '0.04', '0.05']
         model = self.load_model_k(bias=biases[dir_index], model_number=model_number)
+        """except:
+            biases = ['0.020', '0.030', '0.040', '0.050']
+            model = self.load_model_k(bias=biases[dir_index], model_number=model_number)"""
 
         i = 0
         return_dict = {}
@@ -142,7 +165,8 @@ class PhilipsModelDataset(ModelDataset):
             #print(layer)
             if layer.__class__.__name__ == 'Conv2D':
                 weights = layer.get_weights()[0]
-                ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                #ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
+                ws = torch.from_numpy(weights).permute(3, 2, 0, 1)
                 if self.standardize:
                     mean = ws.mean(dim=1, keepdim=True)
                     sd = ws.std(dim=1, keepdim=True)
@@ -171,7 +195,7 @@ class PhilipsModelDataset(ModelDataset):
 
 class LucasModelDataset(Dataset):
 
-    def __init__(self, device, data_files: list, use_weights=True, use_biases=False, only_conv=False):
+    def __init__(self, device, data_files: list, use_weights=True, use_biases=True, only_conv=False):
         super(LucasModelDataset, self).__init__()
         # set the number of classes: 4 or 2
         self.use_weights = use_weights
@@ -183,9 +207,9 @@ class LucasModelDataset(Dataset):
 
         for file in data_files:
             if self.data is None:
-                self.data = pd.read_pickle(file)
+                self.data = read_pickle(file)
             else:
-                self.data = pd.concat([self.data, pd.read_pickle(file)], ignore_index=True)
+                self.data = concat([self.data, read_pickle(file)], ignore_index=True)
 
     def __len__(self):
         # lenths of the subdirectories are 2000
@@ -204,22 +228,20 @@ class LucasModelDataset(Dataset):
                 if self.use_weights:
                     ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
-                    i += 1
                 if self.use_biases:
-                    bs = torch.from_numpy(biases).unsqueeze(1).unsqueeze(2).unsqueeze(3)
-                    return_dict[f'layer_{i}'] = bs.float().to(self.device)
-                    i += 1
+                    bs = torch.from_numpy(biases)
+                    return_dict[f'bias_{i}'] = bs.float().to(self.device)
+                i += 1
             elif layer['name'] == 'Dense' and not self.only_conv:
                 weights = layer['weights']
                 biases = layer['bias']
                 if self.use_weights:
-                    ws = torch.permute(torch.from_numpy(weights), (1, 0)).unsqueeze(2).unsqueeze(3)
+                    ws = torch.from_numpy(weights)
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
-                    i += 1
                 if self.use_biases:
-                    bs = torch.from_numpy(biases).unsqueeze(1).unsqueeze(2).unsqueeze(3)
-                    return_dict[f'layer_{i}'] = bs.float().to(self.device)
-                    i += 1
+                    bs = torch.from_numpy(biases)
+                    return_dict[f'bias_{i}'] = bs.float().to(self.device)
+                i += 1
 
         zeros = np.zeros((4))
 
@@ -231,22 +253,3 @@ class LucasModelDataset(Dataset):
         sample = {'model_weights': return_dict, 'bias': torch.from_numpy(zeros).float().to(self.device)}
         # print(f'Sample: {sample["bias"]}')
         return sample
-
-
-class Loading_Dataset(Dataset):
-
-    def __init__(self, biases, datasets):
-        super(Loading_Dataset, self).__init__()
-        self.data = datasets
-        self.lengths = []
-        for dataset in datasets:
-            self.lengths.append(len(dataset))
-        self.biases = biases
-
-    def __len__(self):
-        pass
-
-    def __getitem__(self, index):
-        for i in range(len(self.lengths)):
-            if index - self.lengths[0] < 0:
-                return self.data[i][index] #, biases[i]

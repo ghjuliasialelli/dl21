@@ -1,36 +1,66 @@
-# dl21
-Deep Learning FS21 Project
+# Deep Learning Project Repository
+
+## Group Members
+- Ghjulia Sialleli
+- Luca Schweri
+- David Scherer
+- Philip Toma
 
 ---
-## TODO's
-- todo
+## Usage Instructions
 
----
-## Roadmap
-- todo
+Different sections of the report were generated with different files, which all are supplied in this repository.
+__First__,To install dependencies, use the file ***.env for installation of a new conda environment with the required
+packages.
 
----
-##Structure
-- utils
-  - _image_operations.py:_
-  - _get_weights.py:_digit
-classification networks
-- 
+To reproduce the classifiers, run the supplied run_models.sh file. __(??)__
 
----
-## FairML
-_**Perturbation:**_ The basic idea behind FairML (and many other attempts to audit or interpret model behavior) is to measure a model’s 
-dependence on its inputs by changing them.  If a small change to an input feature dramatically changes the output, the model is sensitive to the feature.
 
-Therefore, if a model places high importance on a specific feature, then a slight change (perturbation) would result in a big change to the prediction (that is the assumption).
+### Principal Component Analysis and K-Nearest Neighbors
 
-__But what if the input attributes are correlated?__ Perturbing one feature alone will (in that case) not provide an accurate measure of the model’s dependency on the feature.
-One has to perturb the other input attributes as well.
+To run the PCA+KNN baseline use the following command:
+```
+python test_baseline.py
+```
+The program prints and plots the accuracy for different datasets when using PCA+KNN.
 
-The trick FairML uses to counter this multicollinearity is orthogonal projection. FairML orthogonally projects the input to measure the dependence of the predictive model on each attribute.
+### Bias Mitigation
+
+In our project we have used different bias localization and mitigation methods. To run the bias mitigation use the following command:
+```
+python bias_mitigation.py
+```
+The methods used and the hyperparameters can be changed in [bias_mitigation_options.json](options/bias_mitigation_options.json).
+The current option file contains all possible methods and the following is a list of all methods and their hyperparameters:
+- **Bias Localization Methods**
+  - **Fast Gradient Sign Method** (fgsm)
+    - *epsilon*: The magnitude of change in each step
+    - *steps*: Number of steps to execute
+    - *neuron_threshold*: Threshold used for neuron-wise localization of the bias
+  - **Gradient Method** (gradient)
+    - *epsilon*: The maximal magnitude of change in each step
+    - *steps*: Number of steps to execute
+    - *neuron_threshold*: Threshold used for neuron-wise localization of the bias
+  - **Permutation Importance** (perm_imp)
+    - *iterations*: Number of permutation iterations executed per layer
+- **Bias Mitigation methods**
+  - **Fast Gradient Sign Method** (fgsm)
+    - *epsilon*: The magnitude of change in each step
+    - *steps*: Number of steps to execute
+  - **Gradient Method** (gradient)
+    - *epsilon*: The maximal magnitude of change in each step
+    - *steps*: Number of steps to execute
+  - **Reset Weights Layer-Wise** (layer_reset)
+  - **Reset Weights Neuron-Wise** (neuron_reset)
+  - **Dropout** (dropout)
+    - *prob*: The dropout probability used in the added dropout layer
+  - **Fine-Tune** (fine_tune)
+    - *lr*: The learning rate used in fine-tuning
+    - *epochs*: The number of epochs to fine-tune
+
+You can find more information about these methods in the report.
 
 ---
 ## Links and References
 
-- FairML Article: https://blog.fastforwardlabs.com/2017/03/09/fairml-auditing-black-box-predictive-models.html
 - 

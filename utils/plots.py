@@ -16,7 +16,7 @@ def plot_accuracy_matrix(pred_y, true_y, class_names=None, title="Accuracy", sav
     fig, ax = plt.subplots()
     for i in range(len(unique)):
         for j in range(len(unique)):
-            ax.text(j, i, acc_table[i, j], ha='center', va='center', color='blue')
+            ax.text(j, i, f"{acc_table[i, j]:.3f}", ha='center', va='center', color='blue')
     ax.set_title(f"{title} ({accuracy:.5f})")
     ax.xaxis.tick_top()
     if class_names is not None:
