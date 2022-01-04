@@ -20,12 +20,18 @@ import csv
 # define argument parser. The parser will be used when calling:
 # python3 trainer.py --argument1 --argument2
 parser = argparse.ArgumentParser(description='Run Model Training.')
+parser.add_argument('--model_number', type=int, default=10,
+                    help='see README.md.')
+parser.add_argument('--use_dense', action='store_true',
+                    help='set flag for model to use dense layers.')
 parser.add_argument('--epochs', type=int, default=10,
                     help='number of epochs for model training.')
 parser.add_argument('--debug', action='store_true',
                     help='set --debug flag for low computational impact.')
 parser.add_argument('--stepsize', type=int, default=1,
                     help='control how much data is used for training.')
+parser.add_argument('--reshuffle', action='store_true',
+                    help='set flag for reshuffling of train and test.')
 parser.add_argument('path', type=str, default='./',
                     help='path to the model data.')
 args = parser.parse_args()
@@ -52,10 +58,14 @@ print(f'Layer-Shapes: {shapes}')
 
 # Choose and Initialise the classifier model for training
 batch_size = 2
-# classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
-# classifier = Dense_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
-classifier = Better_Dense(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size, new_model=False)
-# classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size,)
+
+classifier = [Better_Dense(layer_shapes=shapes, use_dense=args.use_dense, num_classes=4, batch_size=batch_size, new_model=False),
+              Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=args.use_dense, num_classes=4, batch_size=batch_size,
+                                 new_model=False, two_layers=True),
+              Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=args.use_dense, num_classes=4, batch_size=batch_size,
+                                 new_model=False, two_layers=False),
+              ][args.model_number]
+# classifier = Dense_IFBID_Model(layer_shapes=shapes, use_dense=args.use_dense, num_classes=4, batch_size=batch_size),
 
 # Initialize training-loss
 loss = torch.nn.BCELoss()
@@ -73,9 +83,10 @@ if args.debug:
     test_data = torch.utils.data.Subset(test_data, data_indices)
 
 
-"""data, test_data = balance_datasets(train_data=data, test_data=test_data,
-                                   split1=[int(0.7*len(data)), int(0.3*len(data))],
-                                   split2=[int(0.7*len(test_data)), int(0.3*len(test_data))])"""
+if args.reshuffle:
+    data, test_data = balance_datasets(train_data=data, test_data=test_data,
+                                       split1=[int(0.7*len(data)), int(0.3*len(data))],
+                                       split2=[int(0.7*len(test_data)), int(0.3*len(test_data))])
 
 print("Sizes after Balancing")
 print(f'Train-Data of length: {len(data)}, Test-Data of length {len(test_data)}')
@@ -97,8 +108,16 @@ trainer.test(lightning_model)
 # get and record accuracy obtained from test.
 test_accuracy = lightning_model._model.test_accuracy
 
-"""
-with open(os.path.join(args.path, f'new_better_dense+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
+tmp = ''
+if args.use_dense:
+    tmp = '+dense'
+name = ['dense', 'ifbid', 'ifbid_for_refinement'][args.model_number]
+if args.debug:
+    name = 'debug'
+
+print(f'Save model under name: {name}{tmp}-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
+
+with open(os.path.join(args.path, f'{name}{tmp}-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=' ')
     writer.writerow([test_accuracy])
 
@@ -106,5 +125,5 @@ if not args.debug:
     os.makedirs(os.path.join(args.path, 'bias_classifiers'), exist_ok=True)
     torch.save(lightning_model._model.state_dict(),
                os.path.join(args.path, 'bias_classifiers',
-                            f'new-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
-               )"""
+                            f'{name}{tmp}-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
+               )
