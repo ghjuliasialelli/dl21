@@ -94,5 +94,20 @@ The current option file contains all possible methods and the following is a lis
 
 You can find more information about these methods in the report.
 
+### Bias-level Classifers
+Various classifiers were investigated for this task.
 
+#### RNN
+All operations concerning the RNN model take place in the `rnn.py` file. 
 
+The appriopriate flags are described and can be set at the top of the file. Then, one needs only to run : 
+```
+python rnn.py
+```
+
+Checkpoints of trained models can be found in the `data/trained/lstm/` folder. 
+
+---
+## Links and References
+
+- 
