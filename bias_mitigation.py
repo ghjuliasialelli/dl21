@@ -861,6 +861,119 @@ def plotResults(options):
     fig.get_figure().savefig(f"plots/all_bias_score.jpg")
     plt.close(fig.get_figure())
 
+def get_permutation_importance_by_layers(net, weights_dataloader, number_of_iterations):
+    start = time.time()
+
+    # compute reference score s (accuracy of the net when evaluated on the whole training data)
+    net.eval()
+    with torch.no_grad():
+        trues = []
+        preds = []
+        for data in weights_dataloader:
+            preds.append(np.argmax(net(data['model_weights']).detach().cpu().numpy()[0]))
+            trues.append(np.argmax(data['bias'].detach().cpu().numpy()[0]))
+        preds = np.array(preds)
+        trues = np.array(trues)
+    s = np.count_nonzero(preds == trues) / len(preds)
+
+    end = time.time()
+    print("reference evaluation done", end-start)
+    start = time.time()
+    
+    
+    # this code is only of the initialization of the data frame
+    weights_size = 0
+    layerNames = list(weights_dataloader.dataset[0]['model_weights'].keys())
+    layer_numel = {}
+    for layer in weights_dataloader.dataset[0]['model_weights']:
+        layer_numel[layer] = np.prod(weights_dataloader.dataset[0]['model_weights'][layer].detach().cpu().numpy().shape)
+        weights_size += layer_numel[layer]
+    df = np.empty((len(weights_dataloader), weights_size), dtype='float32')
+
+    end = time.time()
+    print("data frame initialization done", end-start)
+    start = time.time()
+
+
+    # fills the data frame
+    counter = 0 # TODO: remove this line for production
+    for i, data in enumerate(weights_dataloader):
+        layerValues = []
+        for layer in data['model_weights'].keys():
+            layerValues.extend(list(np.ravel(data['model_weights'][layer].detach().cpu().numpy())))
+        df[i] = np.array(layerValues)
+        
+        # TODO: remove those three lines for production
+        if (i+1) % 100 == 0:
+            print(f"{i + 1} / {len(weights_dataloader)}, time: {time.time() - start:.5f}s")
+
+
+    end = time.time()
+    print("data frame filling done", end-start)
+    start = time.time()
+    results = {
+        'importances_mean': [],
+        'importances_std': [],
+        'importances': [],
+    }
+
+    # we permutate layer by layer
+    start_col = 0
+    for ln, bn in zip(layerNames[::2], layerNames[1::2]):
+        # we only work on a copy of the original data frame and reset it when permutating a new layer
+        dfCopy = df.copy()
+        repeats = []
+        layer_weights_numel = layer_numel[ln]
+        bias_weights_numel = layer_numel[bn]
+
+        # repeat process for each feature number_of_iterations times
+        for k in range(number_of_iterations):
+            # permutate all columns associated to a layer
+            for col in range(start_col, start_col + layer_weights_numel + bias_weights_numel):
+                dfCopy[:, col] = np.random.permutation(dfCopy[:, col])
+
+            # compute s_k_j which is equivalent to the accuracy measured on the data from dfCopy
+            net.eval()
+            with torch.no_grad():
+                trues = []
+                preds = []
+                for idx, data in enumerate(weights_dataloader):
+                    layer_weights = np.reshape(dfCopy[idx, start_col:start_col+layer_weights_numel], data['model_weights'][ln].shape)
+                    data['model_weights'][ln] = torch.from_numpy(layer_weights).to(data['model_weights'][ln].device)
+                    layer_weights = np.reshape(dfCopy[idx, start_col+layer_weights_numel:start_col+layer_weights_numel+bias_weights_numel], data['model_weights'][bn].shape)
+                    data['model_weights'][bn] = torch.from_numpy(layer_weights).to(data['model_weights'][bn].device)
+
+                    preds.append(np.argmax(net(data['model_weights']).detach().cpu().numpy()[0]))
+                    trues.append(np.argmax(data['bias'].detach().cpu().numpy()[0]))
+                preds = np.array(preds)
+                trues = np.array(trues)
+
+            s_k_j = np.count_nonzero(preds == trues) / len(preds)
+
+            repeats.append(s_k_j)
+
+        end = time.time()
+        print("finished", ln, bn, end-start)
+        start = time.time()
+
+        importances = list(np.array([s]*len(repeats))-np.array(repeats))
+        results['importances'].append(importances)
+        # calculate importance mean
+        results['importances_mean'].append(np.mean(importances))
+        # calculate importance standard deviation
+        results['importances_std'].append(np.std(importances))
+
+    return results
+
+def plotPermutationImportance(resultDict):
+    df = pd.DataFrame(resultDict)
+    df = df[['importances_mean','importances_std']]
+
+    df.columns = ['importance mean', 'importance std']
+    df.index = ['conv1','conv2','conv3','dense1','dense2']
+    fig = df.plot(kind='bar', figsize=(10,10), title="Permutation Importance", ylabel="decrease in accuracy", xlabel="layer")
+    fig.get_figure().savefig("plots/permutationImportance.jpg")
+
 if __name__ == '__main__':
     # load options
     with open('options/bias_mitigation_options4.json', 'r') as f:
