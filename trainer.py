@@ -54,8 +54,8 @@ print(f'Layer-Shapes: {shapes}')
 batch_size = 2
 # classifier = IFBID_Model(layer_shapes=shapes, batch_size=batch_size)
 # classifier = Dense_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
-# classifier = Better_Dense(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
-classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size)
+classifier = Better_Dense(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size, new_model=False)
+# classifier = Conv2D_IFBID_Model(layer_shapes=shapes, use_dense=True, num_classes=4, batch_size=batch_size,)
 
 # Initialize training-loss
 loss = torch.nn.BCELoss()
@@ -64,7 +64,7 @@ loss = torch.nn.BCELoss()
 
 # Initialise test_data.  Set new_model=True to see how we train on the generalisation set.
 test_data = PhilipsModelDataset('0.02', os.path.join(args.path, 'test'), num_classes=4,
-                                standardize=False, new_model=True)
+                                standardize=False, new_model=False)
 data_indices = list(range(0, len(test_data), args.stepsize))
 test_data = torch.utils.data.Subset(test_data, data_indices)
 
@@ -97,7 +97,7 @@ trainer.test(lightning_model)
 # get and record accuracy obtained from test.
 test_accuracy = lightning_model._model.test_accuracy
 
-with open(os.path.join(args.path, f'itest-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
+with open(os.path.join(args.path, f'new_better_dense+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=' ')
     writer.writerow([test_accuracy])
 
@@ -105,5 +105,5 @@ if not args.debug:
     os.makedirs(os.path.join(args.path, 'bias_classifiers'), exist_ok=True)
     torch.save(lightning_model._model.state_dict(),
                os.path.join(args.path, 'bias_classifiers',
-                            f'test-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
+                            f'new-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
                )

@@ -224,8 +224,13 @@ class Better_Dense(IFBID_Model):
     overfitting.
     """
 
-    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1, refine=False):
+    def __init__(self, layer_shapes, use_dense, num_classes=2, batch_size=1, new_model=False):
         super(Better_Dense, self).__init__(layer_shapes, use_dense, num_classes, batch_size)
+
+        if new_model:
+            self.last_index = len(layer_shapes)
+        else:
+            self.last_index = len(layer_shapes)-1
 
         self.blocks = []
         self.block_0 = nn.Sequential(
@@ -259,7 +264,7 @@ class Better_Dense(IFBID_Model):
         if use_dense:
             m2 = 100
             self.block_3 = nn.Sequential(
-                nn.Linear(in_features=(int(np.prod(layer_shapes[3]))),
+                nn.Linear(in_features=(int(np.prod(layer_shapes[-1]))),
                           out_features=m2),
                 # nn.Sigmoid()
                 nn.ReLU(),
@@ -278,7 +283,6 @@ class Better_Dense(IFBID_Model):
         Input to the ifbid-model is a model.
         Shape of weights should be something like: (Layers, Weight-shape at Layer i)
         """
-
         # Build a flattened tensor of all layers.
         layer_tensor = []
         # for layer in model:
@@ -286,7 +290,8 @@ class Better_Dense(IFBID_Model):
         layer_tensor.append(self.block_1(model['layer_1'].flatten()))
         layer_tensor.append(self.block_2(model['layer_2'].flatten()))
         if self.use_dense_layers:
-            layer_tensor.append(self.block_3(model['layer_3'].flatten()))
+            #layer_tensor.append(self.block_3(model['layer_3'].flatten()))
+            layer_tensor.append(self.block_3(model[f'layer_{self.last_index}'].flatten()))
         layer_tensor = torch.cat(layer_tensor)
         return self.final_dense(layer_tensor)
 
@@ -306,9 +311,13 @@ class Reshaper(nn.Module):
 
 class Conv2D_IFBID_Model(IFBID_Model):
 
-    def __init__(self, layer_shapes, use_dense, num_classes, batch_size=1):
-        super(Conv2D_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=use_dense, num_classes=num_classes, batch_size=batch_size)
-
+    def __init__(self, layer_shapes, use_dense, num_classes, batch_size=1, new_model=False):
+        super(Conv2D_IFBID_Model, self).__init__(layer_shapes, use_dense_layers=use_dense, num_classes=num_classes,
+                                                 batch_size=batch_size)
+        if new_model:
+            self.last_index = len(layer_shapes)
+        else:
+            self.last_index = len(layer_shapes)-1
         """d = x[-1]
         s = x[0]
         if len(x) > 2:
@@ -327,11 +336,11 @@ class Conv2D_IFBID_Model(IFBID_Model):
 
         # The info below is not used in the baseline!
         if use_dense:
-            self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
-            self.block_4 = self.build_d_block(4, layer_shapes[4], m=m2)
+            #self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
+            self.block_4 = self.build_d_block(4, layer_shapes[-1], m=m2)
 
         self.final_dense = nn.Sequential(
-            nn.Linear(in_features=3*m + 2*m2, out_features=self.num_classes),
+            nn.Linear(in_features=3*m + m2, out_features=self.num_classes),
             # in features should be 3*actual_m
             # nn.Linear(in_features=12, out_features=4),
             # nn.ReLU()
@@ -343,7 +352,6 @@ class Conv2D_IFBID_Model(IFBID_Model):
         Input to the ifbid-model is a model.
         Shape of weights should be something like: (Layers, Weight-shape at Layer i)
         """
-
         # Build a flattened tensor of all layers.
         output_tensor = []
         # for layer in model:
@@ -359,8 +367,8 @@ class Conv2D_IFBID_Model(IFBID_Model):
         output_tensor.append(self.block_2(model['layer_2'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         # BELOW NOT USED FOR BASELINE!
         if self.use_dense_layers:
-            output_tensor.append(self.block_3(model['layer_3']))
-            output_tensor.append(self.block_4(model['layer_4']))
+            #output_tensor.append(self.block_3(model['layer_3']))
+            output_tensor.append(self.block_4(model[f'layer_{self.last_index}']))
 
         for i in range(len(output_tensor)):
             output_tensor[i] = output_tensor[i].squeeze()

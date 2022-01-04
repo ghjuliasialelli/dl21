@@ -48,6 +48,8 @@ class ModelWrapper(pl.LightningModule):
         # Warning: use below variable only when testing the model!
         self.test_accuracy = 0
         self.test_size = 0
+        self.val_accuracy = 0
+        self.val_size = 0
 
     def forward(self, x):
         return self._model(x)
@@ -86,28 +88,16 @@ class ModelWrapper(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x = batch['model_weights']
-        """for i in range(batch['bias'].shape[0]):
-            pass
-        for el in x:
-            print(x[el].shape)"""
-
         # Iterate over batch...
         new_list = self.dict_transform(x, batch['bias'].shape[0])
-        losses = []
         for i in range(batch['bias'].shape[0]):
             y = batch['bias'][i]
             x = new_list[i]
             y_hat = self._model(x)
-            # losses.append(self.loss(y_hat.float(), y.float()))
-        """print(len(new_list))
-        for i in range(batch['bias'].shape[0]):
-            pass"""
-        #y = batch['bias'].reshape(-1)
-        # y = batch['bias'][0]
-        # print(y.shape)
-        #y_hat = self._model(x)
+            accuracy = int(sum(y == self.transform.forward(y_hat))) == self._model.num_classes
+            self.val_accuracy = self.val_accuracy + int(accuracy)
+            self.val_size = self.val_size + 1
         return self.loss(y_hat.float(), y.float())
-        #return statistics.mean(losses)
 
     def test_step(self, batch, batch_idx):
         x = batch['model_weights']
@@ -119,12 +109,9 @@ class ModelWrapper(pl.LightningModule):
             y = batch['bias'][i]
             x = new_list[i]
             y_hat = self._model(x)
-            # print(f'y: {y}\ny_hat: {y_hat}')
             loss = self.loss(y_hat.float(), y.float())
-            # losses.append(self.loss(y_hat.float(), y.float()))
             y_hat = self.transform.forward(y_hat)
             accuracy = int(sum(y == y_hat)) == self._model.num_classes
-            # accuracy = int(sum(y == y_hat)) == 2
             self.test_accuracy = self.test_accuracy + int(accuracy)
             self.test_size = self.test_size + 1
         return loss
@@ -134,6 +121,11 @@ class ModelWrapper(pl.LightningModule):
               f'{1.0*self.test_accuracy / self.test_size}')
         self._model.test_accuracy = 1.0*self.test_accuracy / self.test_size
         return {"Test Accuracy": 1.0*self.test_accuracy / self.test_size}
+
+    def on_validation_end(self):
+        print(f'\nValidation Accuracy: {1.0*self.val_accuracy / self.val_size}')
+        self.val_accuracy = 0
+        self.val_size = 0
 
     def train_dataloader(self):
         return DataLoader(self.dataset_split[0], batch_size=self.batch_size,

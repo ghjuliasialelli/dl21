@@ -130,8 +130,8 @@ with tf.device(device):
             validation_data = tf.data.Dataset.from_tensor_slices((valid_im, valid_lab))
             test_data = tf.data.Dataset.from_tensor_slices((X_test, Y_test))
             autotune = tf.data.AUTOTUNE
-            train_data_batches = training_data.shuffle(buffer_size=40000).batch(256).prefetch(buffer_size=autotune)
-            valid_data_batches = validation_data.shuffle(buffer_size=10000).batch(64).prefetch(buffer_size=autotune)
+            train_data_batches = training_data.shuffle(buffer_size=40000).batch(128).prefetch(buffer_size=autotune)
+            valid_data_batches = validation_data.shuffle(buffer_size=10000).batch(32).prefetch(buffer_size=autotune)
             # print(f'checktypes;\n{type(training_data)}')
 
             # ------------------------------------------------
