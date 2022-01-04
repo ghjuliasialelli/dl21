@@ -13,45 +13,63 @@ from torch.nn import CrossEntropyLoss
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 
-###########################################################################################
-# Parameters ##############################################################################
-###########################################################################################
+##########################################################
+# Here, you can set the parameters for execution.
+# Default values are meant to showcase the training of our
+# basic LSTM model on the re-shuffled data.
 
 # Whether to apply random feature extraction
+# available values: True, False
 random_features = False
-# Whether to apply PCA feature extraction
+
+# Whether to apply PCA feature extraction (not available for the generalization set)
+# available values: True, False
 PCA_cond = False
+
 # Whether to reshuffle the data, as described in the report
+# available values: True, False
 reshuffled = True
-# Whether to print informative messages 
+
+# Whether to print informative messages
+# available values: True, False 
 VERBOSE = True
+
 # Whether to only consider the Conv2d layers
+# available values: True, False
 only_conv = False
+
 # Whether to fine-tune the model
+# available values: True, False
 fine_tune = True
+
+# Path to the model to be fine-tuned
+model_to_load = 'saved_models/latest_10_epochs_reshuffled_lstm4_dense2/best_model.pth.tar' #'data/trained/lstm/lstm_original.pth.tar'
+
 # On which data to train/fine-tune the model
-set = 'generalization_dataset' # or 'DigitWdb'
-# Whether to use `weights`, `biases` or `both`
+# available values: 'DigitWdb', 'generalization_set'
+set = 'generalization_set' 
+
+# Whether to use weights and/or biases
+# available values: `weights`, `biases`, `both`
 FEATURES = 'weights'
 
-# Some initializations
-if set == 'generalization_dataset' : 
-    data_path = 'data/generalization_dataset'
-    new_model = True
-elif set == 'DigitWdb' : 
-    data_path = 'data/DigitWdb'
-    new_model = False
-save_path = 'data/trained/lstm/'
+# Where to save the trained model
+save_path = 'saved_models/' #'data/trained/lstm/'
 
-# on the cluster : 
-# data_path = '../../../scratch/gsialelli/DigitWdb'
-# save_path = 'saved_models/'
+# If the data we provided you is not in a data/ folder, 
+# modify `data_path` to specify the path to the data. 
+data_path = '../../../scratch/gsialelli/' + set #'data/' + set
+
+#####################################################################
+# Some parameters initialization, you don't need to worry about that.
 
 if (set == 'DigitWdb') :
+    new_model = False
     max_w_len = 27648
     max_b_len = 128
 
 elif (set == 'generalization_dataset') :
+    new_model = True
     max_w_len = 809728
     max_b_len = 3163
 
@@ -79,7 +97,7 @@ def loadModelWeights():
         if reshuffled : 
             train_data, test_data = balance_datasets(train_data = train_data, test_data = test_data, split1 = [int(0.8*len(train_data)), int(0.2*len(train_data))], split2=[int(0.8*len(test_data)), int(0.2*len(test_data))])
             
-        for modelNumber in tqdm(range(len(train_data)//10), desc="loading model weights with bias "+b):
+        for modelNumber in tqdm(range(len(train_data)), desc="loading model weights with bias "+b):
             model = train_data[modelNumber]
             layerNumber = 0
 
@@ -94,7 +112,7 @@ def loadModelWeights():
                     layerNumber = layerNumber + 1
             train_modelId += 1       
         
-        for modelNumber in tqdm(range(len(test_data)//10), desc="loading model weights with bias "+b):
+        for modelNumber in tqdm(range(len(test_data)), desc="loading model weights with bias "+b):
             model = test_data[modelNumber]
             layerNumber = 0
 
@@ -323,10 +341,7 @@ class Model(nn.Module):
 
 if __name__ == "__main__" :
 
-    if fine_tune and (set == 'DigitWdb') : save_path += 'finetuned_orginal_test_set/'
-    elif set == 'generalization_dataset' : save_path += 'generalization_set/'
-    else : save_path += 'reshuffled_10_epochs_lstm4_dense2/'
-    os.mkdir(save_path)
+    if not os.isdir(save_path) : os.mkdir(save_path)
 
     ##### Loading the data ####################################################################
 
@@ -352,7 +367,7 @@ if __name__ == "__main__" :
     ##### Training the model ###################################################################
 
     if fine_tune : 
-        model_info = torch.load('data/trained/lstm/lstm_reshuffled.pth.tar')
+        model_info = torch.load(model_to_load)
         model = Model()
         model.load_state_dict(model_info['state_dict'])
 
@@ -361,7 +376,7 @@ if __name__ == "__main__" :
     criterion = CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(model.parameters(), lr = 0.01)
     BATCH_SIZE = 16
-    if fine_tune : NUM_EPOCHS = 5
+    if fine_tune : NUM_EPOCHS = 10
     else : NUM_EPOCHS = 10
 
 
@@ -437,14 +452,6 @@ if __name__ == "__main__" :
     plt.savefig(save_path + 'loss.png')
     plt.show()
 
-    """
-    plt.plot(list(range(len(accuracy))), accuracy, label = 'Training')
-    plt.plot(list(range(len(accuracy))), val_accuracy, label = 'Validation')
-    plt.title('Accuracy')
-    plt.legend()
-    plt.savefig(save_path + 'accuracy.png')
-    plt.show()
-    """
 
     ##### Testing time #########################################################################
 
