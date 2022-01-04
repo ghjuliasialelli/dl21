@@ -5,3 +5,7 @@ data/DigitWdb/**
 __pycache__
 digitWdb_*.pkl.gz
 plots/*
+data/*weights.parquet
+data/*weights_new.parquet
+data/reduced/*
+data/generalization_dataset/*

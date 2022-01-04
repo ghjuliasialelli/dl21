@@ -776,8 +776,11 @@ def plotPermutationImportance(resultDict):
 
 
 def plotResults(options):
+    pd.set_option("display.max_rows", None, "display.max_columns", None)
+
     with open(f"plots/{options['name']}_saved_result.pkl", "rb") as f:
         result = pickle.load(f)
+        print(len(result["prediction"]))
     with open(f"plots/{options['name']}_saved_changes_per_sample.pkl", "rb") as f:
         changesPerSample = pickle.load(f)
     with open(f"plots/{options['name']}_saved_selected_layers.pkl", "rb") as f:
@@ -837,6 +840,10 @@ def plotResults(options):
 
         accuracy = accuracy.append(temp, ignore_index=True)
     accuracy = accuracy.set_index('color jitter variance')
+    print("Accuracy")
+    print(accuracy)
+    for col in accuracy.columns:
+        print(col, np.mean(np.array(accuracy[col])) - np.mean(np.array(accuracy['before'])))
     fig = accuracy.plot(kind="bar", title="Accuracy on Unbiased Dataset Before and After Mitigation", figsize=(10, 10), ylabel="mean accuracy")
     fig.get_figure().savefig(f"plots/all_accuracy.jpg")
     plt.close(fig.get_figure())
@@ -856,6 +863,10 @@ def plotResults(options):
                 temp[name_to_title[name]] = np.mean(np.array(result[name]['bias_score'])[np.array(actual_bias) == i])
         accuracy = accuracy.append(temp, ignore_index=True)
     accuracy = accuracy.set_index('color jitter variance')
+    print("Bias Score")
+    print(accuracy)
+    for col in accuracy.columns:
+        print(col, np.mean(np.array(accuracy[col])) - np.mean(np.array(accuracy['before'])))
     fig = accuracy.plot(kind="bar", title="Bias Score Before and After Mitigation",
                         figsize=(10, 10), ylabel="mean bias score")
     fig.get_figure().savefig(f"plots/all_bias_score.jpg")
@@ -864,7 +875,6 @@ def plotResults(options):
 
 if __name__ == '__main__':
     # load options
-    with open('options/bias_mitigation_options4.json', 'r') as f:
+    with open('options/bias_mitigation_options.json', 'r') as f:
         options = json.load(f)
     main(options)
-    # plotResults(options)
