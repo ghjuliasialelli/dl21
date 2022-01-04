@@ -10,11 +10,35 @@
 ## Usage Instructions
 
 Different sections of the report were generated with different files, which all are supplied in this repository.
-__First__,To install dependencies, use the file ***.env for installation of a new conda environment with the required
-packages.
+__First__, the requirements, which need to be installed / upgraded:
+- torch
+- pytorch-lightning
+- sklearn
+- tensorflow
 
-To reproduce the classifiers, run the supplied run_models.sh file. __(??)__
+### Bias Classifiers
+To obtain the bias-classifiers, it is necessary to reproduce (i.e. train the classifiers). To do this, run:
+```
+python trainer.py --epochs [num_epochs] --stepsize [1 for 100% train data, 10 for 10%] --model_number [number] [path-to-data]
+```
+Furthermore, it is possible to supply a model number, where:
+- 0 corresponds to Dense
+- 1 corresponds to Dense+Dense
+- 2 corresponds to Conv
+- 3 corresponds to Conv+Dense
 
+The models will be stored in the directory [path-to-data]/bias_classifiers.
+
+For refinement of the classifiers, use:
+```
+python trainer.py --epochs [num_epochs] --stepsize [1 for 100% train data, 10 for 10%] [path-to-data]
+```
+
+### Generalization Dataset
+To generate data as we did for the generalization dataset, use:
+```
+python3 MNIST_trainer.py --epochs 1 [path-to-colored_mnist] [path-to-store-the-generalization_dataset]```
+```
 
 ### Principal Component Analysis and K-Nearest Neighbors
 
@@ -60,7 +84,5 @@ The current option file contains all possible methods and the following is a lis
 
 You can find more information about these methods in the report.
 
----
-## Links and References
 
-- 
+

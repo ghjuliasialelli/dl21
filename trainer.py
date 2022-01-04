@@ -73,9 +73,9 @@ if args.debug:
     test_data = torch.utils.data.Subset(test_data, data_indices)
 
 
-data, test_data = balance_datasets(train_data=data, test_data=test_data,
+"""data, test_data = balance_datasets(train_data=data, test_data=test_data,
                                    split1=[int(0.7*len(data)), int(0.3*len(data))],
-                                   split2=[int(0.7*len(test_data)), int(0.3*len(test_data))])
+                                   split2=[int(0.7*len(test_data)), int(0.3*len(test_data))])"""
 
 print("Sizes after Balancing")
 print(f'Train-Data of length: {len(data)}, Test-Data of length {len(test_data)}')
@@ -97,6 +97,7 @@ trainer.test(lightning_model)
 # get and record accuracy obtained from test.
 test_accuracy = lightning_model._model.test_accuracy
 
+"""
 with open(os.path.join(args.path, f'new_better_dense+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=' ')
     writer.writerow([test_accuracy])
@@ -106,4 +107,4 @@ if not args.debug:
     torch.save(lightning_model._model.state_dict(),
                os.path.join(args.path, 'bias_classifiers',
                             f'new-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
-               )
+               )"""
