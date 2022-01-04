@@ -13,8 +13,9 @@ from torch.nn import CrossEntropyLoss
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 
-data_path = '../../../scratch/gsialelli/DigitWdb'
-save_path = 'saved_models/'
+###########################################################################################
+# Parameters ##############################################################################
+###########################################################################################
 
 # Whether to apply random feature extraction
 random_features = False
@@ -25,7 +26,38 @@ reshuffled = True
 # Whether to print informative messages 
 VERBOSE = True
 # Whether to only consider the Conv2d layers
-only_conv = True
+only_conv = False
+# Whether to fine-tune the model
+fine_tune = True
+# On which data to train/fine-tune the model
+set = 'generalization_dataset' # or 'DigitWdb'
+# Whether to use `weights`, `biases` or `both`
+FEATURES = 'weights'
+
+# Some initializations
+if set == 'generalization_dataset' : 
+    data_path = 'data/generalization_dataset'
+    new_model = True
+elif set == 'DigitWdb' : 
+    data_path = 'data/DigitWdb'
+    new_model = False
+save_path = 'data/trained/lstm/'
+
+# on the cluster : 
+# data_path = '../../../scratch/gsialelli/DigitWdb'
+# save_path = 'saved_models/'
+
+if (set == 'DigitWdb') :
+    max_w_len = 27648
+    max_b_len = 128
+
+elif (set == 'generalization_dataset') :
+    max_w_len = 809728
+    max_b_len = 3163
+
+if FEATURES == 'both' : max_layer_len = max_w_len + max_b_len
+elif FEATURES == 'weights' : max_layer_len = max_w_len
+else : max_layer_len = max_b_len
 
 ###########################################################################################
 # Helper functions ########################################################################
@@ -41,13 +73,13 @@ def loadModelWeights():
     test_df, test_modelId = pd.DataFrame(), 0
     
     for b in bias:
-        train_data = ModelDataset(bias=b, data_directory=data_path + '/train')
-        test_data = ModelDataset(bias=b, data_directory=data_path + '/test')
+        train_data = ModelDataset(bias=b, data_directory=data_path + '/train', new_model = new_model)
+        test_data = ModelDataset(bias=b, data_directory=data_path + '/test', new_model = new_model)
         
         if reshuffled : 
-            train_data, test_data = balance_datasets(train_data = train_data, test_data = test_data, split1 = [int(0.7*len(train_data)), int(0.3*len(train_data))], split2=[int(0.7*len(test_data)), int(0.3*len(test_data))])
+            train_data, test_data = balance_datasets(train_data = train_data, test_data = test_data, split1 = [int(0.8*len(train_data)), int(0.2*len(train_data))], split2=[int(0.8*len(test_data)), int(0.2*len(test_data))])
             
-        for modelNumber in tqdm(range(len(train_data)), desc="loading model weights with bias "+b):
+        for modelNumber in tqdm(range(len(train_data)//10), desc="loading model weights with bias "+b):
             model = train_data[modelNumber]
             layerNumber = 0
 
@@ -62,12 +94,17 @@ def loadModelWeights():
                     layerNumber = layerNumber + 1
             train_modelId += 1       
         
-        for modelNumber in tqdm(range(len(test_data)), desc="loading model weights with bias "+b):
+        for modelNumber in tqdm(range(len(test_data)//10), desc="loading model weights with bias "+b):
             model = test_data[modelNumber]
             layerNumber = 0
 
             if only_conv : layers_to_consider = model.layers[:3]
             else : layers_to_consider = model.layers
+
+            if fine_tune and (set == 'generalization_set') :
+                layers_indices = np.random.choice([0,1,2,3,4,5], 5, replace=False)
+                layers_indices.sort()
+                layers_to_consider = [layers_to_consider[i] for i in layers_indices]
 
             for layer in layers_to_consider:
                 if len(layer.get_weights()) != 0:
@@ -154,11 +191,6 @@ def dataset_iterator(ids, ModelWeights, feature):
                 layer = np.random.choice(layer, size = 100, replace = False) 
             elif (not PCA_cond) : 
                 # padding for Conv1d layer
-                max_w_len = 27648
-                max_b_len = 128
-                if feature == 'both' : max_layer_len = max_w_len + max_b_len
-                elif feature == 'weights' : max_layer_len = max_w_len
-                else : max_layer_len = max_b_len
                 layer = np.pad(layer, pad_width=(0, max_layer_len - len(layer)))
             layers.append(layer)
         
@@ -168,15 +200,21 @@ def dataset_iterator(ids, ModelWeights, feature):
     return dataset, labels
         
 
-def train_test(trainModelWeights, testModelWeights, feature='weights'):
+def train_test(trainModelWeights, testModelWeights, feature):
     """
         Splitting the obtained RNN-ready-dataset into train/val/test sets.
     """
-    
+
     train_ids = list(range(0, int(trainModelWeights['modelId'].max() + 1)))
     test_ids = list(range(0, int(testModelWeights['modelId'].max() + 1)))
-    train_ids, val_ids = train_test_split(train_ids, test_size = 0.2)
-    
+
+    if fine_tune and (set == 'DigitWdb') :
+        # we don't care about train_ids, as we fine-tune on the test set
+        train_ids, test_ids = train_test_split(test_ids, test_size = 0.2)
+        train_ids, val_ids = train_test_split(train_ids, test_size = 0.2)
+
+    else : 
+        train_ids, val_ids = train_test_split(train_ids, test_size = 0.2)
 
     train_dataset, train_labels = dataset_iterator(train_ids, trainModelWeights, feature)
     val_dataset, val_labels = dataset_iterator(val_ids, trainModelWeights, feature)
@@ -221,7 +259,6 @@ def batcher(X_dataset, y_dataset, batch_size=8, shuffle=True):
         y_CE = []
         for y_label in y_dataset[start:end] : 
             y_CE.append(softmax_labels[y_label])
-        #labels = torch.Tensor(y_dataset[start:end])
         labels = torch.Tensor(y_CE)
         yield (batch, labels)
 
@@ -244,14 +281,14 @@ class Model(nn.Module):
         # Available layers (for trying different architectures)
 
         # Convolutional layers
-        self.conv1 = nn.Conv1d(27648, 1000, 1)
+        self.conv1 = nn.Conv1d(max_layer_len, 1000, 1)
         self.conv2 = nn.Conv1d(10000, 1000, 1)
         self.conv3 = nn.Conv1d(1000, 100, 1)
         # LSTM layers
-        self.lstm0 = nn.LSTM(input_size = 27648, hidden_size = 1000, num_layers = 1, batch_first = True, bidirectional = False)
+        self.lstm0 = nn.LSTM(input_size = max_layer_len, hidden_size = 1000, num_layers = 1, batch_first = True, bidirectional = False)
         self.lstm1 = nn.LSTM(input_size = 1000, hidden_size = 100, num_layers = 1, batch_first = True, bidirectional = False)
         self.lstm2 = nn.LSTM(input_size = 1000, hidden_size = 10, num_layers = 1, batch_first = True, bidirectional = False)
-        self.lstm4 = nn.LSTM(input_size = 27648, hidden_size = 100, batch_first = True)
+        self.lstm4 = nn.LSTM(input_size = max_layer_len, hidden_size = 100, batch_first = True)
         
         # Linear layers
         self.dense = nn.Linear(10, 4)
@@ -261,8 +298,8 @@ class Model(nn.Module):
         self.sm = nn.Softmax(dim = 2)
         
         # GRU layers
-        self.gru0 = nn.GRU(input_size = 27648, hidden_size = 100, batch_first = True)
-        self.gru1 = nn.GRU(input_size = 27648, hidden_size = 1000, batch_first = True)
+        self.gru0 = nn.GRU(input_size = max_layer_len, hidden_size = 100, batch_first = True)
+        self.gru1 = nn.GRU(input_size = max_layer_len, hidden_size = 1000, batch_first = True)
         self.gru2 = nn.GRU(input_size = 1000, hidden_size = 100, batch_first = True)
 
     def forward(self, x):
@@ -286,7 +323,9 @@ class Model(nn.Module):
 
 if __name__ == "__main__" :
 
-    save_path += 'conv_only_reshuffled_latest_10_epochs_lstm4_dense2/'
+    if fine_tune and (set == 'DigitWdb') : save_path += 'finetuned_orginal_test_set/'
+    elif set == 'generalization_dataset' : save_path += 'generalization_set/'
+    else : save_path += 'reshuffled_10_epochs_lstm4_dense2/'
     os.mkdir(save_path)
 
     ##### Loading the data ####################################################################
@@ -302,7 +341,7 @@ if __name__ == "__main__" :
 
     if VERBOSE : print('Split data...')
     if PCA_cond : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(PCA_trainModelWeights, PCA_testModelWeights, feature='pca_weights')
-    else : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(trainModelWeights, testModelWeights, feature='weights')
+    else : X_train, y_train, train_ids, X_val, y_val, val_ids, X_test, y_test, test_ids = train_test(trainModelWeights, testModelWeights, feature=FEATURES)
 
     # Sanity checks : 
     if VERBOSE : 
@@ -312,12 +351,18 @@ if __name__ == "__main__" :
 
     ##### Training the model ###################################################################
 
-    model = Model()
+    if fine_tune : 
+        model_info = torch.load('data/trained/lstm/lstm_reshuffled.pth.tar')
+        model = Model()
+        model.load_state_dict(model_info['state_dict'])
+
+    else : model = Model()
 
     criterion = CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(model.parameters(), lr = 0.01)
     BATCH_SIZE = 16
-    NUM_EPOCHS = 10
+    if fine_tune : NUM_EPOCHS = 5
+    else : NUM_EPOCHS = 10
 
 
     best_loss = 10000000.0

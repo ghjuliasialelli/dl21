@@ -1,6 +1,7 @@
 # Torch Imports:
 import torch
 from torch import nn
+from typing import TypeVar
 
 # TF Imports:
 #from tensorflow.keras.applications import * #Efficient Net included here
@@ -10,6 +11,8 @@ from keras import models, layers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
+
+T = TypeVar('T', bound='Module')
 
 
 class MNISTClassifier(nn.Module):
@@ -27,15 +30,26 @@ class MNISTClassifier(nn.Module):
         self.dropout = nn.Dropout(0.3)
         self.dense2 = nn.Linear(128, 10)
 
+        self.bias_dropout_layer = ""
+        self.bias_dropout = None
+
     def forward(self, x):
         x = self.relu(self.conv1(x))
+        if self.bias_dropout_layer == 'layer_0':
+            x = self.bias_dropout(x)
         x = self.maxpool(x)
         x = self.relu(self.conv2(x))
+        if self.bias_dropout_layer == 'layer_1':
+            x = self.bias_dropout(x)
         x = self.maxpool(x)
         x = self.relu(self.conv3(x))
+        if self.bias_dropout_layer == 'layer_2':
+            x = self.bias_dropout(x)
         x = self.maxpool(x)
         x = self.flatten(x)
         x = self.relu(self.dense1(x))
+        if self.bias_dropout_layer == 'layer_3':
+            x = self.bias_dropout(x)
         x = self.dropout(x)
         x = self.softmax(self.dense2(x))
         return x
@@ -43,16 +57,45 @@ class MNISTClassifier(nn.Module):
     def set_weights(self, weights):
         state_dict = self.state_dict()
         state_dict['conv1.weight'] = weights['layer_0'][0]
-        state_dict['conv1.bias'] = weights['layer_1'][0, :, 0, 0, 0]
-        state_dict['conv2.weight'] = weights['layer_2'][0]
-        state_dict['conv2.bias'] = weights['layer_3'][0, :, 0, 0, 0]
-        state_dict['conv3.weight'] = weights['layer_4'][0]
-        state_dict['conv3.bias'] = weights['layer_5'][0, :, 0, 0, 0]
-        state_dict['dense1.weight'] = weights['layer_6'][0, :, :, 0, 0]
-        state_dict['dense1.bias'] = weights['layer_7'][0, :, 0, 0, 0]
-        state_dict['dense2.weight'] = weights['layer_8'][0, :, :, 0, 0]
-        state_dict['dense2.bias'] = weights['layer_9'][0, :, 0, 0, 0]
+        state_dict['conv1.bias'] = weights['bias_0'][0]
+        state_dict['conv2.weight'] = weights['layer_1'][0]
+        state_dict['conv2.bias'] = weights['bias_1'][0]
+        state_dict['conv3.weight'] = weights['layer_2'][0]
+        state_dict['conv3.bias'] = weights['bias_2'][0]
+        state_dict['dense1.weight'] = torch.permute(weights['layer_3'][0], (1, 0))
+        state_dict['dense1.bias'] = weights['bias_3'][0]
+        state_dict['dense2.weight'] = torch.permute(weights['layer_4'][0], (1, 0))
+        state_dict['dense2.bias'] = weights['bias_4'][0]
         self.load_state_dict(state_dict, strict=True)
+
+    def add_dropout(self, prob, layer):
+        self.bias_dropout_layer = layer
+        self.bias_dropout = nn.Dropout(prob)
+        self.bias_dropout.train()
+
+    def get_model_weights(self):
+        weights = {}
+        state_dict = self.state_dict()
+        weights['layer_0'] = state_dict['conv1.weight'].clone().unsqueeze(0)
+        weights['bias_0'] = state_dict['conv1.bias'].clone().unsqueeze(0)
+        weights['layer_1'] = state_dict['conv2.weight'].clone().unsqueeze(0)
+        weights['bias_1'] = state_dict['conv2.bias'].clone().unsqueeze(0)
+        weights['layer_2'] = state_dict['conv3.weight'].clone().unsqueeze(0)
+        weights['bias_2'] = state_dict['conv3.bias'].clone().unsqueeze(0)
+        weights['layer_3'] = torch.permute(state_dict['dense1.weight'].clone(), (1, 0)).unsqueeze(0)
+        weights['bias_3'] = state_dict['dense1.bias'].clone().unsqueeze(0)
+        weights['layer_4'] = torch.permute(state_dict['dense2.weight'].clone(), (1, 0)).unsqueeze(0)
+        weights['bias_4'] = state_dict['dense2.bias'].clone().unsqueeze(0)
+        return weights
+
+    def eval(self: T) -> T:
+        super(MNISTClassifier, self).eval()
+        if self.bias_dropout is not None:
+            self.bias_dropout.train()
+        return self
+
+
+
 
 
 class EfficientNet_MNIST_Classifier():

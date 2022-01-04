@@ -4,3 +4,4 @@ data/DigitWdb/**
 .idea
 __pycache__
 digitWdb_*.pkl.gz
+plots/*
