@@ -20,6 +20,10 @@ import csv
 # define argument parser. The parser will be used when calling:
 # python3 trainer.py --argument1 --argument2
 parser = argparse.ArgumentParser(description='Run Model Training.')
+parser.add_argument('--model_number', type=int, default=10,
+                    help='see README.md.')
+parser.add_argument('--use_dense', action='store_true',
+                    help='set flag for model to use dense layers.')
 parser.add_argument('--epochs', type=int, default=10,
                     help='number of epochs for model training.')
 parser.add_argument('--debug', action='store_true',
@@ -53,12 +57,24 @@ print(f'Old Layer-Shapes: {old_shapes}')
 """TODO!!! Add model-number stuff!!"""
 
 batch_size = 2
-"""classifier = Conv2D_IFBID_Model(layer_shapes=old_shapes, use_dense=False, num_classes=4, batch_size=batch_size,
-                                new_model= not args.test_on_old)"""
-classifier = Better_Dense(layer_shapes=old_shapes, use_dense=True, num_classes=4, batch_size=batch_size,
-                          new_model=not args.test_on_old)
+
+if args.model_number == 0:
+    classifier = Conv2D_IFBID_Model(layer_shapes=old_shapes, use_dense=args.use_dense, num_classes=4,
+                                    batch_size=batch_size, new_model=not args.test_on_old, two_layers=False)
+    if args.use_dense:
+        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid_for_refinement+dense-trainsize-700')))
+    else:
+        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid_for_refinement-trainsize-700')))
+elif args.model_number == 1:
+    classifier = Better_Dense(layer_shapes=old_shapes, use_dense=args.use_dense, num_classes=4, batch_size=batch_size,
+                              new_model=not args.test_on_old)
+    if args.use_dense:
+        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense+dense-trainsize-700')))
+    else:
+        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense-trainsize-700')))
+
 #classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'better_dense-trainsize-3500')))
-classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'new-trainsize-7000')))
+#classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'new-trainsize-7000')))
 #classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'test-trainsize-7000')))
 #classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid-trainsize-7000')))
 
