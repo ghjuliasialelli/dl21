@@ -1,0 +1,11 @@
+fastparquet
+keras
+matplotlib
+numpy
+pandas
+pillow
+pyarrow
+sklearn
+tensorboard
+tensorflow
+torch

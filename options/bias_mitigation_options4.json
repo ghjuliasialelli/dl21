@@ -1,43 +1,17 @@
 {
-  "name": "fgsm1_gradient1",
+  "name": "fgsm3",
   "random_seed": 2022,
   "network": "conv2d_ifbid",
   "pretrained_network_weights_path": "data/philips_bias_classifiers/ifbid+dense-trainsize-7000",
-  "num_samples": 250,
+  "num_samples": 500,
   "start_num_samples": 0,
   "methods": [
     {
       "localization_method": {
         "name": "fgsm",
         "epsilon": 2e-2,
-        "steps": 1,
-        "neuron_threshold": 1e-2
-      },
-      "mitigation_methods": [
-        null,
-        {
-          "name": "layer_reset"
-        },
-        {
-          "name": "neuron_reset"
-        },
-        {
-          "name": "dropout",
-          "prob": 0.3
-        },
-        {
-          "name": "fine_tune",
-          "lr": 1e-3,
-          "epochs": 1
-        }
-      ]
-    },
-    {
-      "localization_method": {
-        "name": "gradient",
-        "epsilon": 2e-2,
-        "steps": 1,
-        "neuron_threshold": 1e-2
+        "steps": 5,
+        "neuron_threshold": 5e-2
       },
       "mitigation_methods": [
         null,

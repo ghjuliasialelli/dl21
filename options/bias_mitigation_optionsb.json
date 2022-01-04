@@ -1,0 +1,30 @@
+{
+  "name": "test",
+  "random_seed": 2022,
+  "network": "conv2d_ifbid",
+  "pretrained_network_weights_path": "data/philips_bias_classifiers/ifbid+dense-trainsize-7000",
+  "num_samples": 1,
+  "start_num_samples": 0,
+  "methods": [
+    {
+      "localization_method": {
+        "name": "permutation_importance",
+        "iterations": 3
+      },
+      "mitigation_methods": [
+        {
+          "name": "layer_reset"
+        },
+        {
+          "name": "dropout",
+          "prob": 0.3
+        },
+        {
+          "name": "fine_tune",
+          "lr": 1e-3,
+          "epochs": 1
+        }
+      ]
+    }
+  ]
+}

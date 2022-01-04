@@ -4,7 +4,6 @@
 # ------------
 
 
-import h5py
 import os
 import sys
 
@@ -196,7 +195,7 @@ class PhilipsModelDataset(ModelDataset):
 
 class LucasModelDataset(Dataset):
 
-    def __init__(self, device, data_files: list, use_weights=True, use_biases=False, only_conv=False):
+    def __init__(self, device, data_files: list, use_weights=True, use_biases=True, only_conv=False):
         super(LucasModelDataset, self).__init__()
         # set the number of classes: 4 or 2
         self.use_weights = use_weights
@@ -228,24 +227,21 @@ class LucasModelDataset(Dataset):
                 biases = layer['bias']
                 if self.use_weights:
                     ws = torch.permute(torch.from_numpy(weights), (3, 2, 0, 1))
-                    torch.from_numpy(weights).permute(3, 2, 0, 1)
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
-                    i += 1
                 if self.use_biases:
-                    bs = torch.from_numpy(biases).unsqueeze(1).unsqueeze(2).unsqueeze(3)
-                    return_dict[f'layer_{i}'] = bs.float().to(self.device)
-                    i += 1
+                    bs = torch.from_numpy(biases)
+                    return_dict[f'bias_{i}'] = bs.float().to(self.device)
+                i += 1
             elif layer['name'] == 'Dense' and not self.only_conv:
                 weights = layer['weights']
                 biases = layer['bias']
                 if self.use_weights:
-                    ws = torch.permute(torch.from_numpy(weights), (1, 0)).unsqueeze(2).unsqueeze(3)
+                    ws = torch.from_numpy(weights)
                     return_dict[f'layer_{i}'] = ws.float().to(self.device)
-                    i += 1
                 if self.use_biases:
-                    bs = torch.from_numpy(biases).unsqueeze(1).unsqueeze(2).unsqueeze(3)
-                    return_dict[f'layer_{i}'] = bs.float().to(self.device)
-                    i += 1
+                    bs = torch.from_numpy(biases)
+                    return_dict[f'bias_{i}'] = bs.float().to(self.device)
+                i += 1
 
         zeros = np.zeros((4))
 
