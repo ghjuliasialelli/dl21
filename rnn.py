@@ -40,25 +40,25 @@ only_conv = False
 
 # Whether to fine-tune the model
 # available values: True, False
-fine_tune = True
+fine_tune = False
 
 # Path to the model to be fine-tuned
-model_to_load = 'saved_models/latest_10_epochs_reshuffled_lstm4_dense2/best_model.pth.tar' #'data/trained/lstm/lstm_original.pth.tar'
+model_to_load = 'data/trained/lstm/lstm_original.pth.tar'
 
 # On which data to train/fine-tune the model
-# available values: 'DigitWdb', 'generalization_set'
-set = 'generalization_set' 
+# available values: 'DigitWdb', 'generalization_dataset'
+set = 'DigitWdb' 
 
 # Whether to use weights and/or biases
 # available values: `weights`, `biases`, `both`
 FEATURES = 'weights'
 
 # Where to save the trained model
-save_path = 'saved_models/' #'data/trained/lstm/'
+save_path = 'data/trained/lstm/'
 
 # If the data we provided you is not in a data/ folder, 
 # modify `data_path` to specify the path to the data. 
-data_path = '../../../scratch/gsialelli/' + set #'data/' + set
+data_path = 'data/' + set
 
 #####################################################################
 # Some parameters initialization, you don't need to worry about that.
@@ -97,7 +97,7 @@ def loadModelWeights():
         if reshuffled : 
             train_data, test_data = balance_datasets(train_data = train_data, test_data = test_data, split1 = [int(0.8*len(train_data)), int(0.2*len(train_data))], split2=[int(0.8*len(test_data)), int(0.2*len(test_data))])
             
-        for modelNumber in tqdm(range(len(train_data)), desc="loading model weights with bias "+b):
+        for modelNumber in tqdm(range(len(train_data)//100), desc="loading model weights with bias "+b):
             model = train_data[modelNumber]
             layerNumber = 0
 
@@ -112,14 +112,14 @@ def loadModelWeights():
                     layerNumber = layerNumber + 1
             train_modelId += 1       
         
-        for modelNumber in tqdm(range(len(test_data)), desc="loading model weights with bias "+b):
+        for modelNumber in tqdm(range(len(test_data)//100), desc="loading model weights with bias "+b):
             model = test_data[modelNumber]
             layerNumber = 0
 
             if only_conv : layers_to_consider = model.layers[:3]
             else : layers_to_consider = model.layers
 
-            if fine_tune and (set == 'generalization_set') :
+            if fine_tune and (set == 'generalization_dataset') :
                 layers_indices = np.random.choice([0,1,2,3,4,5], 5, replace=False)
                 layers_indices.sort()
                 layers_to_consider = [layers_to_consider[i] for i in layers_indices]
@@ -341,7 +341,7 @@ class Model(nn.Module):
 
 if __name__ == "__main__" :
 
-    if not os.isdir(save_path) : os.mkdir(save_path)
+    if not os.path.isdir(save_path) : os.mkdir(save_path)
 
     ##### Loading the data ####################################################################
 

@@ -23,11 +23,12 @@ bias = ['0.02', '0.03', '0.04', '0.05']
 bias_to_label = {'0.02': 3, '0.03': 2, '0.04': 1, '0.05': 0}
 
 
-def load_weights():
+def load_weights(new_model=False):
     # load training data
     train = pd.DataFrame()
     for b in bias:
-        model_data = ModelDataset(bias=b, data_directory='data/DigitWdb/train')
+        data_dir = 'data/generalization_dataset/train' if new_model else 'data/DigitWdb/train'
+        model_data = ModelDataset(bias=b, data_directory=data_dir, new_model=new_model)
         for model_idx in range(len(model_data)):
             print(f"Train Model {model_idx}/{len(model_data)}")
             weights = model_data[model_idx].get_weights()
@@ -40,7 +41,8 @@ def load_weights():
     # load testing data
     test = pd.DataFrame()
     for b in bias:
-        model_data = ModelDataset(bias=b, data_directory='data/DigitWdb/test')
+        data_dir = 'data/generalization_dataset/test' if new_model else 'data/DigitWdb/test'
+        model_data = ModelDataset(bias=b, data_directory=data_dir, new_model=new_model)
         for model_idx in range(len(model_data)):
             print(f"Test Model {model_idx}/{len(model_data)}")
             weights = model_data[model_idx].get_weights()
@@ -53,11 +55,12 @@ def load_weights():
     return train, test
 
 
-def load_weights_per_layer():
+def load_weights_per_layer(new_model=False):
     # load training data
     train = pd.DataFrame()
     for b in bias:
-        model_data = ModelDataset(bias=b, data_directory='data/DigitWdb/train')
+        data_dir = 'data/generalization_dataset/train' if new_model else 'data/DigitWdb/train'
+        model_data = ModelDataset(bias=b, data_directory=data_dir, new_model=new_model)
         for model_idx in range(len(model_data)):
             print(f"Train Model {model_idx}/{len(model_data)}")
             weights = model_data[model_idx].get_weights()
@@ -68,7 +71,8 @@ def load_weights_per_layer():
     # load testing data
     test = pd.DataFrame()
     for b in bias:
-        model_data = ModelDataset(bias=b, data_directory='data/DigitWdb/test')
+        data_dir = 'data/generalization_dataset/test' if new_model else 'data/DigitWdb/test'
+        model_data = ModelDataset(bias=b, data_directory=data_dir, new_model=new_model)
         for model_idx in range(len(model_data)):
             print(f"Test Model {model_idx}/{len(model_data)}")
             weights = model_data[model_idx].get_weights()
@@ -79,34 +83,47 @@ def load_weights_per_layer():
     return train, test
 
 
-def save_data_as_parquet():
-    if not os.path.exists('data/train_weights.parquet') or not os.path.exists('data/test_weights.parquet'):
-        train, test = load_weights()
-        if not os.path.exists('data/train_weights.parquet'):
-            train.to_parquet('data/train_weights.parquet', index=False)
-        if not os.path.exists('data/test_weights.parquet'):
-            test.to_parquet('data/test_weights.parquet', index=False)
-
-    if not os.path.exists('data/train_layer_weights.parquet') or not os.path.exists('data/test_layer_weights.parquet'):
-        train, test = load_weights_per_layer()
-        if not os.path.exists('data/train_layer_weights.parquet'):
-            train.to_parquet('data/train_layer_weights.parquet', index=False)
-        if not os.path.exists('data/test_layer_weights.parquet'):
-            test.to_parquet('data/test_layer_weights.parquet', index=False)
-
-
-def load_data_from_parquet(per_layer=False):
-    if per_layer:
-        train = pd.read_parquet('data/train_layer_weights.parquet')
-        test = pd.read_parquet('data/test_layer_weights.parquet')
+def save_data_as_parquet(new_model=False):
+    if new_model:
+        add = "_new"
     else:
-        train = pd.read_parquet('data/train_weights.parquet')
-        test = pd.read_parquet('data/test_weights.parquet')
+        add = ""
+
+    if not os.path.exists(f'data/train_weights{add}.parquet') or not os.path.exists(f'data/test_weights{add}.parquet'):
+        train, test = load_weights(new_model=new_model)
+        if not os.path.exists(f'data/train_weights{add}.parquet'):
+            train.to_parquet(f'data/train_weights{add}.parquet', index=False)
+        if not os.path.exists(f'data/test_weights{add}.parquet'):
+            test.to_parquet(f'data/test_weights{add}.parquet', index=False)
+
+    if not os.path.exists(f'data/train_layer_weights{add}.parquet') or not os.path.exists(f'data/test_layer_weights{add}.parquet'):
+        train, test = load_weights_per_layer(new_model=new_model)
+        if not os.path.exists(f'data/train_layer_weights{add}.parquet'):
+            train.to_parquet(f'data/train_layer_weights{add}.parquet', index=False)
+        if not os.path.exists(f'data/test_layer_weights{add}.parquet'):
+            test.to_parquet(f'data/test_layer_weights{add}.parquet', index=False)
+
+
+def load_data_from_parquet(per_layer=False, new_model=False):
+    if new_model:
+        add = "_new"
+    else:
+        add = ""
+
+    if per_layer:
+        train = pd.read_parquet(f'data/train_layer_weights{add}.parquet')
+        test = pd.read_parquet(f'data/test_layer_weights{add}.parquet')
+    else:
+        train = pd.read_parquet(f'data/train_weights{add}.parquet')
+        test = pd.read_parquet(f'data/test_weights{add}.parquet')
 
     return train, test
 
 
 def autoencoder_reduce_dimensions(dim=100):
+    if not os.path.exists("data/reduced"):
+        os.mkdir("data/reduced")
+
     train, test = load_data_from_parquet()
 
     train_X = pd.DataFrame(np.array(list(train['weights'])))
@@ -133,9 +150,12 @@ def autoencoder_reduce_dimensions(dim=100):
     test_y.to_csv(f'data/reduced/autoencoder_{dim}/test_y.csv', index=False)
 
 
-def pca_reduce_dimensions(dim=100, only_conv=False, kernel=None, **params):
+def pca_reduce_dimensions(dim=100, only_conv=False, new_model=False, kernel=None, **params):
+    if not os.path.exists("data/reduced"):
+        os.mkdir("data/reduced")
+
     if only_conv:
-        train, test = load_data_from_parquet(per_layer=True)
+        train, test = load_data_from_parquet(per_layer=True, new_model=new_model)
         for l in range(3):
             if l == 0:
                 train_X = pd.DataFrame(np.array(list(train['weights'].loc[train['layer'] == l])))
@@ -148,7 +168,7 @@ def pca_reduce_dimensions(dim=100, only_conv=False, kernel=None, **params):
 
         print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
     else:
-        train, test = load_data_from_parquet()
+        train, test = load_data_from_parquet(new_model=new_model)
 
         train_X = pd.DataFrame(np.array(list(train['weights'])))
         train_y = pd.DataFrame([bias_to_label[b] for b in train['bias']])
@@ -167,16 +187,21 @@ def pca_reduce_dimensions(dim=100, only_conv=False, kernel=None, **params):
 
     print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
 
+    if new_model:
+        add = "_new"
+    else:
+        add = ""
+
     if only_conv:
         if kernel is None:
-            name = f'pca_{dim}_conv'
+            name = f'pca_{dim}{add}_conv'
         else:
-            name = f'{kernel}_pca_{dim}_conv'
+            name = f'{kernel}_pca_{dim}{add}_conv'
     else:
         if kernel is None:
-            name = f'pca_{dim}'
+            name = f'pca_{dim}{add}'
         else:
-            name = f'{kernel}_pca_{dim}'
+            name = f'{kernel}_pca_{dim}{add}'
 
     if not os.path.exists(f'data/reduced/{name}'):
         os.mkdir(f'data/reduced/{name}')
@@ -188,6 +213,9 @@ def pca_reduce_dimensions(dim=100, only_conv=False, kernel=None, **params):
 
 
 def autoencoder_reduce_dimensions_per_layer(dim=100):
+    if not os.path.exists("data/reduced"):
+        os.mkdir("data/reduced")
+
     train, test = load_data_from_parquet(per_layer=True)
 
     for l in range(5):
@@ -217,6 +245,9 @@ def autoencoder_reduce_dimensions_per_layer(dim=100):
 
 
 def pca_reduce_dimensions_per_layer(dim=100, kernel=None, **params):
+    if not os.path.exists("data/reduced"):
+        os.mkdir("data/reduced")
+
     train, test = load_data_from_parquet(per_layer=True)
 
     for l in range(5):
@@ -227,7 +258,6 @@ def pca_reduce_dimensions_per_layer(dim=100, kernel=None, **params):
         test_y = pd.DataFrame([bias_to_label[b] for b in test['bias'].loc[train['layer'] == l]])
 
         print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
-
         if kernel is None:
             dim_reduction = PCADimensionReductionModel(dim, **params)
         else:
@@ -237,7 +267,6 @@ def pca_reduce_dimensions_per_layer(dim=100, kernel=None, **params):
         test_X = dim_reduction.transform(test_X)
 
         print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
-
         if kernel is None:
             name = f'pca_{dim}_l{l+1}'
         else:
@@ -260,10 +289,10 @@ def get_classification_accuracy(classifier, reduced_data='autoencoder_100', scal
         test_y = np.array(pd.read_csv(f'data/reduced/{reduced_data}/test_y.csv'))[:, 0]
         if shuffle:
             random.seed(2022)
-            new_train_X = np.empty((7000, train_X.shape[1]))
-            new_train_y = np.empty((7000,))
-            new_test_X = np.empty((3000, train_X.shape[1]))
-            new_test_y = np.empty((3000,))
+            new_train_X = np.empty((int((train_X.shape[0] + test_X.shape[0]) * 0.7), train_X.shape[1]))
+            new_train_y = np.empty((int((train_X.shape[0] + test_X.shape[0]) * 0.7),))
+            new_test_X = np.empty((int((train_X.shape[0] + test_X.shape[0]) * 0.3), train_X.shape[1]))
+            new_test_y = np.empty((int((train_X.shape[0] + test_X.shape[0]) * 0.3),))
             train_idx = random.sample([i for i in range(train_X.shape[0])], int(train_X.shape[0] * 0.7))
             test_idx = [i for i in range(train_X.shape[0]) if i not in train_idx]
             new_train_X[:int(train_X.shape[0] * 0.7)] = train_X.iloc[train_idx]
@@ -485,5 +514,15 @@ if __name__ == '__main__':
     print(f"Accuracy (trained on orig. Trainset, tested on orig. Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', plot=True):.5f}")
     print(f"Accuracy (trained on orig. Trainset + 10% orig. Testset, tested on 90% orig. Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', fine_tune=50, plot=True):.5f}")
     print(f"Accuracy (trained on orig. Trainset + 20% orig. Testset, tested on 80% orig. Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', fine_tune=100, plot=True):.5f}")
-    print(f"Accuracy (trained on reshuffled Trainset, tested on reshuffled Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', shuffle=True):.5f}")
+    print(f"Accuracy (trained on reshuffled Trainset, tested on reshuffled Testset): {get_classification_accuracy(classifier, reduced_data='pca_100', shuffle=True, plot=True):.5f}")
     print(f"Accuracy (trained on reshuffled Trainset, tested on reshuffled Testset, using only Conv-Layers): {get_classification_accuracy(classifier, reduced_data='pca_100_conv', shuffle=True, plot=True):.5f}")
+
+
+    # new genralization model
+    save_data_as_parquet(new_model=True)
+
+    random.seed(2021)
+    np.random.seed(2021)
+    pca_reduce_dimensions(dim=100, new_model=True)
+
+    print(f"Accuracy (different MNIST classifier): {get_classification_accuracy(classifier, reduced_data='pca_100_new', shuffle=True, plot=True):.5f}")

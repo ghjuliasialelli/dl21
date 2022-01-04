@@ -6,6 +6,7 @@ pandas
 pillow
 pyarrow
 sklearn
+tables
 tensorboard
 tensorflow
 torch
