@@ -1,9 +1,7 @@
 # ------------
 # Author:       Philip Toma
-# Description:  This file implements the training pipeline of the IFBID Model.
-# Usage:        python3 trainer.py [--debug] [--epochs 10] [path]
-#               where the []-brackets mean an entry is optional, but should be used.
-#               For more info:      python3 trainer.py --help
+# Description:  This file implements the refinement pipeline of the Bias Classifier Models.
+# Usage:        For info: python3 trainer.py --help
 # ------------
 
 import pytorch_lightning as pl
@@ -19,7 +17,8 @@ import csv
 
 # define argument parser. The parser will be used when calling:
 # python3 trainer.py --argument1 --argument2
-parser = argparse.ArgumentParser(description='Run Model Training.')
+
+parser = argparse.ArgumentParser(description='Run Model Refinement.')
 parser.add_argument('--model_number', type=int, default=10,
                     help='see README.md.')
 parser.add_argument('--use_dense', action='store_true',
@@ -73,10 +72,6 @@ elif args.model_number == 1:
     else:
         classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense-trainsize-700')))
 
-#classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'better_dense-trainsize-3500')))
-#classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'new-trainsize-7000')))
-#classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'test-trainsize-7000')))
-#classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid-trainsize-7000')))
 
 # ------------------------------------------
 # Prepare Refinement
@@ -94,9 +89,6 @@ else:
     data, test_data = random_split(data, [int(0.8*len(data)), ceil(0.2*len(data))]) #[1, len(data)-1]) #
 
 print(f'Refinement Dataset size: {len(data)}')
-# data_indices = list(range(0, len(data), args.stepsize))
-# data = torch.utils.data.Subset(data, data_indices)
-
 
 # get MNIST-classifier shapes for NN-initialisation:
 m = data[0]['model_weights']
@@ -111,17 +103,11 @@ loss = torch.nn.BCELoss()
 # Initialise lightning checkpointing.
 
 # Initialise test_data:
-"""test_data = PhilipsModelDataset('0.02', os.path.join(args.initial_data_path, 'test'), num_classes=4,
-                                    standardize=False, new_model=False)"""
-
 if not args.test_on_old:
     test_data = PhilipsModelDataset('0.02', os.path.join(args.path, 'test'), num_classes=4,
                                     standardize=False, new_model=True)
 
 print(f'Refinement Test-Dataset size: {len(test_data)}')
-# data_indices = list(range(0, len(test_data), args.stepsize))
-# test_data = torch.utils.data.Subset(test_data, data_indices)
-
 if args.debug and args.test_on_old:
     data_indices = list(range(0, len(test_data), 10))
     test_data = torch.utils.data.Subset(test_data, data_indices)
@@ -160,16 +146,3 @@ if args.test_on_old:
 trainer.test(lightning_model)
 
 test_accuracy = lightning_model._model.test_accuracy
-
-"""
-with open(os.path.join(args.path, f'ifbid+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}.csv'), 'w', newline='') as csvfile:
-    writer = csv.writer(csvfile, delimiter=' ')
-    writer.writerow([test_accuracy])
-
-if not args.debug:
-    os.makedirs(os.path.join(args.path, 'bias_classifiers'), exist_ok=True)
-    torch.save(lightning_model._model.state_dict(),
-               os.path.join(args.path, 'bias_classifiers',
-                            f'ifbid+dense-trainsize-{int(0.7*len(data))+int(0.7*len(test_data))}')
-               )
-"""

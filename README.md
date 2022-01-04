@@ -32,17 +32,26 @@ Further, calling trainer.py has the options:
 
 The models will be stored in the directory [path-to-data]/bias_classifiers. An example call would therefore be:
 ```
-python3 trainer.py --model_number 0 --epochs 1 --stepsize 1 --reshuffle --use_dense /home/user/Documents/DL_Project/
+python3 trainer.py --model_number 0 --epochs 1 --stepsize 1 --reshuffle --use_dense ./data/author_dataset
 ```
 
 For **refinement** of the classifiers in the list above, use:
 ```
-python3 refiner.py --epochs [num-refinement-epochs] [path-to-original-model_weights] [path-to-generalization_dataset] [path-to-bias_classifiers]
+python3 refiner.py --epochs [num-refinement-epochs] --model_number [number] [path-to-original-model_weights] [path-to-generalization_dataset] [path-to-bias_classifiers]
 ```
 
 Further, calling refine.py has the options:
 - Setting the flag **--test_on_old** will use the original (authors) test-set for training and refinement.
   - Omitting the flag will refine and test using the generalisation set.
+- Setting the flag **--use_dense** will use the classifier that recognises and uses information from the dense layers of the MNIST classifier.
+- Model numbers correspond to:
+  - 0: Conv Model
+  - 1: Dense model
+
+An example call:
+```
+python3 refiner.py --epochs 1 --model_number 0 --use_dense ./data/author_dataset ./data/generalization_dataset ./data/author_dataset
+```
 
 ### Generalization Dataset
 To generate data as we did for the generalization dataset, use:
