@@ -338,7 +338,7 @@ class Conv2D_IFBID_Model(IFBID_Model):
 
         # The info below is not used in the baseline!
         if use_dense:
-            if not self.two_layers:
+            if self.two_layers:
                 self.block_3 = self.build_d_block(3, layer_shapes[3], m=m2)
                 mp = 2*m2
             else:
@@ -361,19 +361,16 @@ class Conv2D_IFBID_Model(IFBID_Model):
         # Build a flattened tensor of all layers.
         output_tensor = []
         # for layer in model:
-        """output_tensor.append(self.block_0(model['layer_0'].squeeze()))
-        output_tensor.append(self.block_1(model['layer_1'].squeeze()))
-        output_tensor.append(self.block_2(model['layer_2'].squeeze()))
-        """
         shape = model['layer_0'].shape
         output_tensor.append(self.block_0(model['layer_0'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         shape = model['layer_1'].shape
         output_tensor.append(self.block_1(model['layer_1'].reshape((shape[1], shape[2], shape[3], shape[4]))))
         shape = model['layer_2'].shape
         output_tensor.append(self.block_2(model['layer_2'].reshape((shape[1], shape[2], shape[3], shape[4]))))
+
         # BELOW NOT USED FOR BASELINE!
         if self.use_dense_layers:
-            if not self.two_layers:
+            if self.two_layers:
                 output_tensor.append(self.block_3(model['layer_3']))
             output_tensor.append(self.block_4(model[f'layer_{self.last_index}']))
 

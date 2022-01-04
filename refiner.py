@@ -60,17 +60,23 @@ batch_size = 2
 if args.model_number == 0:
     classifier = Conv2D_IFBID_Model(layer_shapes=old_shapes, use_dense=args.use_dense, num_classes=4,
                                     batch_size=batch_size, new_model=not args.test_on_old, two_layers=False)
-    if args.use_dense:
-        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid_for_refinement+dense-trainsize-700')))
-    else:
-        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid_for_refinement-trainsize-700')))
+    try:
+        if args.use_dense:
+            classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid_for_refinement+dense-trainsize-7000')))
+        else:
+            classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'ifbid_for_refinement-trainsize-7000')))
+    except:
+        print(f'Check in {args.model_path} for model number')
 elif args.model_number == 1:
     classifier = Better_Dense(layer_shapes=old_shapes, use_dense=args.use_dense, num_classes=4, batch_size=batch_size,
                               new_model=not args.test_on_old)
-    if args.use_dense:
-        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense+dense-trainsize-700')))
-    else:
-        classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense-trainsize-700')))
+    try:
+        if args.use_dense:
+            classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense+dense-trainsize-7000')))
+        else:
+            classifier.load_state_dict(torch.load(os.path.join(args.model_path, 'dense-trainsize-7000')))
+    except:
+        print(f'Check in {args.model_path} for model number')
 
 
 # ------------------------------------------
