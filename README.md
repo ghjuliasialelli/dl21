@@ -105,7 +105,7 @@ The appriopriate flags are described and can be set at the top of the file. Then
 python rnn.py
 ```
 
-Checkpoints of trained models can be found in the `data/trained/lstm/` folder. 
+Checkpoints of trained models can be made available upon request. They would normally be found in a shared Polybox folder, but poor Wifi connection is preventing their uploading.
 
 ---
 ## Links and References
