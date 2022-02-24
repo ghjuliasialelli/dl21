@@ -2,6 +2,8 @@
 
 The present work pertains to inference-free bias detection and mitigation in neural networks. By means of experimenting with the [DigitWdb dataset](https://arxiv.org/abs/2109.04374), we show that it is possible not only to (easily) detect bias in the parameters of (simple) trained neural networks, but that it is possible to slightly mitigate this bias through various procedures. As such, this paper stands as a basis for further research on bias analysis in machine learning.
 
+More details to be found in the [report](https://github.com/ghjuliasialelli/dl21/blob/main/report.pdf).
+
 ## Group Members
 - Ghjulia Sialleli
 - Luca Schweri
