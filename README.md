@@ -1,6 +1,6 @@
 # Deep Learning Project Repository - Mirror, mirror on the wall, is my model biased at all?
 
-The present work pertains to inference-free bias detection and mitigation in neural networks. By means of experimenting with the DigitWdb dataset [1], we show that it is possible not only to (easily) detect bias in the parameters of (simple) trained neural networks, but that it is possible to slightly mitigate this bias through various procedures. As such, this paper stands as a basis for further research on bias analysis in machine learning.
+The present work pertains to inference-free bias detection and mitigation in neural networks. By means of experimenting with the [DigitWdb dataset](https://arxiv.org/abs/2109.04374), we show that it is possible not only to (easily) detect bias in the parameters of (simple) trained neural networks, but that it is possible to slightly mitigate this bias through various procedures. As such, this paper stands as a basis for further research on bias analysis in machine learning.
 
 ## Group Members
 - Ghjulia Sialleli
